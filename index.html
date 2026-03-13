@@ -13,6 +13,7 @@
     rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/pdf.css" />
 </head>
 
 <body>
@@ -282,6 +283,70 @@
       </section>
     </div>
   </main>
+
+  <!-- PDF Export Container (Visually Hidden) -->
+  <div id="pdf-report-container" class="pdf-export-only">
+    <div class="pdf-container">
+      <header class="pdf-header">
+        <img src="/LOGOAMPLI.png" alt="Amplify" class="pdf-logo" />
+        <div class="pdf-title-area">
+          <h1 class="pdf-main-title">Report de Desempenho</h1>
+          <div class="pdf-date-range" id="pdf-date-range-text">Programa Hunter's</div>
+        </div>
+      </header>
+
+      <div class="pdf-content-grid">
+        <!-- Left Column: Top 3 & Summary -->
+        <div class="pdf-left-col">
+          <div class="pdf-summary-grid">
+            <div class="pdf-summary-item">
+              <div class="pdf-summary-label">Total de Posts</div>
+              <div class="pdf-summary-value" id="pdf-total-posts">0</div>
+            </div>
+            <div class="pdf-summary-item">
+              <div class="pdf-summary-label">Total de Indicações</div>
+              <div class="pdf-summary-value" id="pdf-total-referrals">0</div>
+            </div>
+            <div class="pdf-summary-item">
+              <div class="pdf-summary-label">Total Conteúdo Double</div>
+              <div class="pdf-summary-value" id="pdf-total-double">0</div>
+            </div>
+            <div class="pdf-summary-item">
+              <div class="pdf-summary-label">Pontos Acumulados</div>
+              <div class="pdf-summary-value highlight" id="pdf-total-points">0</div>
+            </div>
+          </div>
+
+          <section class="pdf-section">
+            <h2 class="pdf-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+              Ranking Top 3 Criadores
+            </h2>
+            <div class="pdf-top3-list" id="pdf-top3-container">
+              <!-- Instantiated via JS -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Column: Chart -->
+        <div class="pdf-right-col">
+          <section class="pdf-section" style="height: 100%;">
+            <h2 class="pdf-section-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              Ranking — Top 10
+            </h2>
+            <div class="pdf-chart-container">
+              <canvas id="pdf-ranking-chart"></canvas>
+            </div>
+          </section>
+        </div>
+      </div>
+      
+      <footer class="pdf-footer">
+        Powered by Amplify • Gerado em <span id="pdf-generation-date"></span>
+      </footer>
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">

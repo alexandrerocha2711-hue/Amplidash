@@ -5,6 +5,7 @@
 import { fetchRawData, processAndAggregateData } from './data.js';
 import { renderRankingChart, renderDistributionChart } from './charts.js';
 import { formatNumber, getInitials, animateCounter, debounce } from './utils.js';
+import { generatePDF } from './pdf.js';
 
 // ============================================================
 // STATE
@@ -254,7 +255,8 @@ function bindEvents() {
     // Download PDF
     if (downloadPdfBtn) {
         downloadPdfBtn.addEventListener('click', () => {
-            window.print();
+            const currentFilterName = dateSelect ? dateSelect.options[dateSelect.selectedIndex].text : 'Este mês';
+            generatePDF(filteredCreators, currentFilterName);
         });
     }
 
