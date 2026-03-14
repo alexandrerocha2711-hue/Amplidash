@@ -34,6 +34,10 @@
       <div class="page-intro">
         <h2>Acompanhe o desenvolvimento</h2>
         <p>Ranking segmentado por categorias de foco da semana.</p>
+        <button id="start-voting-btn" class="btn btn-primary" style="margin-top: 1.5rem; display: inline-flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          Start Best of The Week
+        </button>
       </div>
 
       <!-- Categories Grid -->
@@ -152,6 +156,48 @@
       </div>
     </div>
   </footer>
+
+  <!-- Voting Modal -->
+  <div id="voting-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <button class="modal-close-btn" id="modal-close-btn">×</button>
+      
+      <div class="modal-header">
+        <span class="modal-category-icon" id="modal-cat-icon">🌟</span>
+        <h3 class="modal-category-title" id="modal-cat-title">Best of The Week</h3>
+      </div>
+      
+      <div class="modal-body">
+        <div class="modal-participantInfo">
+          <div class="modal-avatar" id="modal-avatar">AC</div>
+          <div class="modal-name" id="modal-name">Alexandre Costa</div>
+          <div class="modal-progress" id="modal-progress">1 / 17</div>
+        </div>
+        <div class="modal-objective-box">
+          <span class="modal-objective-label">Objetivo da Semana:</span>
+          <p class="modal-objective-text" id="modal-objective-text">Decidido em reunião (Meet)</p>
+        </div>
+      </div>
+
+      <div class="modal-actions" id="modal-actions-voting">
+         <button class="btn btn-no" id="btn-vote-no" title="Não Fez">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          (-2)
+         </button>
+         <button class="btn" id="btn-vote-neutral" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);" title="Neutro/Pular">
+          (0)
+         </button>
+         <button class="btn btn-yes" id="btn-vote-yes" title="Fez">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          (+1)
+         </button>
+      </div>
+
+      <div class="modal-actions" id="modal-actions-finish" style="display: none;">
+         <button class="btn btn-primary btn-finish" id="btn-finish-voting">Finalizar Votação</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="/src/melhores/js/app.js"></script>
 </body>
