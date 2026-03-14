@@ -252,11 +252,12 @@ body::before {
 .modal-close-btn:hover { background: rgba(255, 255, 255, 0.2); }
 
 .modal-header {
-  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+  display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px;
   margin-bottom: 32px;
+  position: relative;
 }
 .modal-category-icon { font-size: 48px; }
-.modal-category-title { font-size: 1.5rem; font-weight: 800; color: #fff; text-align: center; }
+.modal-category-title { font-size: 1.5rem; font-weight: 800; color: #fff; text-align: center; line-height: 1.2; }
 
 .modal-body {
   background: rgba(0, 0, 0, 0.2);
@@ -265,12 +266,12 @@ body::before {
 .modal-participantInfo {
   display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px;
   margin-bottom: 24px;
-  position: relative;
 }
 .modal-progress {
-  position: absolute; top: 0; right: 0;
-  font-size: 0.8rem; font-weight: 700; color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.1); padding: 4px 8px; border-radius: 8px;
+  font-size: 0.85rem; font-weight: 700; color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1); padding: 6px 12px; border-radius: 20px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .modal-avatar {
   width: 80px; height: 80px; border-radius: 50%;
@@ -295,6 +296,86 @@ body::before {
 .btn-yes:hover { background: rgba(34, 197, 94, 0.4); transform: scale(1.02); box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
 
 .btn-finish { width: 100%; font-size: 1.1rem; padding: 16px; }
+
+/* Selection Grid (BotW Winners) */
+.modal-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.modal-selection-grid::-webkit-scrollbar { width: 4px; }
+.modal-selection-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+.selection-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.selection-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--brand-blue);
+  transform: translateY(-2px);
+}
+.selection-item .item-avatar { margin-right: 0; width: 40px; height: 40px; font-size: 14px; }
+.selection-item span { font-size: 0.75rem; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+
+.selection-item span { font-size: 0.75rem; font-weight: 600; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+
+/* Celebration & Shame */
+.modal-celebration {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(10, 15, 30, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 20px;
+  overflow: hidden;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.celebration-content { position: relative; z-index: 2; text-align: center; }
+.celebration-avatar { 
+  width: 120px; height: 120px; 
+  border-radius: 50%; background: var(--gradient-blue);
+  font-size: 40px; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+  box-shadow: 0 0 40px rgba(0, 243, 255, 0.4);
+  border: 4px solid rgba(255,255,255,0.2);
+}
+
+.celebration-title { font-size: 3rem; font-weight: 900; margin-bottom: 8px; font-family: 'Outfit', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+.celebration-subtitle { font-size: 1.2rem; opacity: 0.8; }
+
+.celebration-particles { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+
+/* Particle Animations */
+.particle { position: absolute; font-size: 24px; pointer-events: none; }
+
+@keyframes particle-fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes particle-rise {
+  0% { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+}
 
 /* Responsive adjustments */
 @media (max-width: 1024px) {

@@ -19,8 +19,8 @@
             <img src="/LOGOAMPLI.png" alt="Amplify" />
           </div>
           <div>
-            <h1 class="header-title">Ranking de Excelência</h1>
-            <p class="header-subtitle">Melhores Participantes</p>
+            <h1 class="header-title">Best of the week</h1>
+            <p class="header-subtitle">Melhor dos melhores</p>
           </div>
         </div>
       </div>
@@ -165,18 +165,43 @@
       <div class="modal-header">
         <span class="modal-category-icon" id="modal-cat-icon">🌟</span>
         <h3 class="modal-category-title" id="modal-cat-title">Best of The Week</h3>
+        <div class="modal-progress" id="modal-progress">1 / 17</div>
       </div>
       
       <div class="modal-body">
-        <div class="modal-participantInfo">
-          <div class="modal-avatar" id="modal-avatar">AC</div>
-          <div class="modal-name" id="modal-name">Alexandre Costa</div>
-          <div class="modal-progress" id="modal-progress">1 / 17</div>
+        <div id="modal-participant-content">
+          <div class="modal-participantInfo">
+            <div class="modal-avatar" id="modal-avatar">AC</div>
+            <div class="modal-name" id="modal-name">Alexandre Costa</div>
+          </div>
+          <div class="modal-objective-box">
+            <span class="modal-objective-label" id="modal-objective-label">Objetivo da Semana:</span>
+            <p class="modal-objective-text" id="modal-objective-text">Decidido em reunião (Meet)</p>
+          </div>
         </div>
-        <div class="modal-objective-box">
-          <span class="modal-objective-label">Objetivo da Semana:</span>
-          <p class="modal-objective-text" id="modal-objective-text">Decidido em reunião (Meet)</p>
+
+        <!-- Selection Grid for BOTW Winners (Hidden by default) -->
+        <div id="modal-selection-grid" class="modal-selection-grid" style="display: none;">
+          <!-- Injected via JS -->
         </div>
+
+        <!-- Celebration/Shame Screen (Hidden by default) -->
+        <div id="modal-celebration-screen" class="modal-celebration" style="display: none;">
+          <div id="celebration-particles" class="celebration-particles"></div>
+          <div class="celebration-content">
+            <div class="celebration-avatar" id="celebration-avatar"></div>
+            <h2 class="celebration-title" id="celebration-title">WINNER!</h2>
+            <p class="celebration-subtitle" id="celebration-subtitle">Melhor Fato da Semana</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action: Speaker Cycle (BOTW Only) -->
+      <div class="modal-actions" id="modal-actions-speaker" style="display: none;">
+        <button class="btn btn-primary" id="btn-next-speaker" style="width: 100%;">
+          Próximo Participante
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left: 8px;"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
       </div>
 
       <div class="modal-actions" id="modal-actions-voting">
