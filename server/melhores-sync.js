@@ -9,7 +9,7 @@ import {
   normalizeLookup,
   cloneParticipants,
 } from '../src/melhores/js/shared.js';
-import { getBestPageId, retrievePageMarkdown, updatePageMarkdownContent } from './notion-client.js';
+import { retrievePageMarkdown, updatePageMarkdownContent } from './notion-client.js';
 
 const SCORE_CATEGORY_KEYS = ['exercicio', 'familia', 'alimentacao', 'hobbies', 'conhecimentos'];
 const CATEGORY_SECTION_MATCHERS = [
@@ -532,7 +532,6 @@ function parseMarkdownState(markdown) {
 function buildStateResponse(parsed) {
   return {
     source: 'notion',
-    pageId: getBestPageId(),
     syncedAt: new Date().toISOString(),
     participants: parsed.participants,
   };

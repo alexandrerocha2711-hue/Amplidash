@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/melhores/state"
+  to = "/.netlify/functions/melhores-state"
+  status = 200
+
+[[redirects]]
+  from = "/api/melhores/apply"
+  to = "/.netlify/functions/melhores-apply"
+  status = 200
+
+[[redirects]]
+  from = "/api/melhores/reset"
+  to = "/.netlify/functions/melhores-reset"
+  status = 200

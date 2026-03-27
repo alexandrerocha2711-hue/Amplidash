@@ -11,7 +11,6 @@ let participantState = withTotals(cloneParticipants(FALLBACK_PARTICIPANTS_DATA))
 let sourceInfo = {
   source: 'fallback',
   syncedAt: null,
-  pageId: null,
   error: null,
 };
 
@@ -145,7 +144,6 @@ export async function loadParticipantsData() {
     sourceInfo = {
       source: payload.source || 'notion',
       syncedAt: payload.syncedAt || new Date().toISOString(),
-      pageId: payload.pageId || null,
       error: null,
     };
   } catch (error) {
@@ -153,7 +151,6 @@ export async function loadParticipantsData() {
     sourceInfo = {
       source: 'fallback',
       syncedAt: null,
-      pageId: null,
       error: error.message,
     };
   }
@@ -180,7 +177,6 @@ export async function persistVotingSession({ sessionResults, bestWinnerId, worst
     sourceInfo = {
       source: payload.source || 'notion',
       syncedAt: payload.syncedAt || new Date().toISOString(),
-      pageId: payload.pageId || null,
       error: null,
     };
   } catch (error) {
@@ -208,7 +204,6 @@ export async function resetAllScores() {
     sourceInfo = {
       source: payload.source || 'notion',
       syncedAt: payload.syncedAt || new Date().toISOString(),
-      pageId: payload.pageId || null,
       error: null,
     };
   } catch (error) {

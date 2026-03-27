@@ -24,8 +24,10 @@ let botwVotes = {};
 let botwStep = 'SPEAKING';
 let bestWinnerId = null;
 let worstWinnerId = null;
+let syncIntervalId = null;
 
 const CATEGORIES_ORDER = CATEGORY_DEFINITIONS;
+const SYNC_INTERVAL_MS = 60000;
 
 const SFX = {
   win: new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3'),
@@ -42,6 +44,8 @@ Object.entries(SFX).forEach(([key, audio]) => {
 document.addEventListener('DOMContentLoaded', async () => {
   bindVotingEvents();
   await refreshDashboard('Carregando dados...');
+  startAutoSync();
+  bindSyncRefreshEvents();
 });
 
 function getButtonLabel(button) {
@@ -111,6 +115,37 @@ async function refreshDashboard(loadingLabel = 'Sincronizando...') {
 
   setButtonBusy(startButton, false, loadingLabel);
   setButtonBusy(resetButton, false, loadingLabel);
+}
+
+function startAutoSync() {
+  clearInterval(syncIntervalId);
+
+  syncIntervalId = setInterval(async () => {
+    await refreshDashboardIfIdle();
+  }, SYNC_INTERVAL_MS);
+}
+
+async function refreshDashboardIfIdle() {
+  const votingModal = $('#voting-modal');
+
+  if (votingModal && votingModal.style.display === 'flex') {
+    return;
+  }
+
+  await loadParticipantsData();
+  renderDashboard();
+}
+
+function bindSyncRefreshEvents() {
+  window.addEventListener('focus', () => {
+    void refreshDashboardIfIdle();
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      void refreshDashboardIfIdle();
+    }
+  });
 }
 
 function renderCategory(containerId, sortedData) {
