@@ -1,11 +1,82 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import {
+  handleMelhoresApplyRequest,
+  handleMelhoresResetRequest,
+  handleMelhoresStateRequest,
+} from './server/melhores-api.js';
+
+async function readJsonBody(req) {
+  const chunks = [];
+
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+
+  if (chunks.length === 0) {
+    return {};
+  }
+
+  const raw = Buffer.concat(chunks).toString('utf8');
+  return raw ? JSON.parse(raw) : {};
+}
+
+function sendJson(res, response) {
+  res.statusCode = response.status;
+
+  Object.entries(response.headers).forEach(([key, value]) => {
+    res.setHeader(key, value);
+  });
+
+  res.end(JSON.stringify(response.body));
+}
 
 export default defineConfig({
   server: {
     port: 3000,
     open: true
   },
+  plugins: [
+    {
+      name: 'melhores-dev-api',
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          const pathname = (req.url || '').split('?')[0];
+
+          if (req.method === 'OPTIONS' && pathname.startsWith('/api/melhores/')) {
+            sendJson(res, {
+              status: 204,
+              headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type',
+              },
+              body: {},
+            });
+            return;
+          }
+
+          if (pathname === '/api/melhores/state' && req.method === 'GET') {
+            sendJson(res, await handleMelhoresStateRequest());
+            return;
+          }
+
+          if (pathname === '/api/melhores/apply' && req.method === 'POST') {
+            const body = await readJsonBody(req);
+            sendJson(res, await handleMelhoresApplyRequest(body));
+            return;
+          }
+
+          if (pathname === '/api/melhores/reset' && req.method === 'POST') {
+            sendJson(res, await handleMelhoresResetRequest());
+            return;
+          }
+
+          next();
+        });
+      },
+    },
+  ],
   build: {
     outDir: 'dist',
     rollupOptions: {

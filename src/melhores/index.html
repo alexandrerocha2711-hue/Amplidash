@@ -34,10 +34,17 @@
       <div class="page-intro">
         <h2>Acompanhe o desenvolvimento</h2>
         <p>Ranking segmentado por categorias de foco da semana.</p>
-        <button id="start-voting-btn" class="btn btn-primary" style="margin-top: 1.5rem; display: inline-flex; align-items: center; gap: 8px;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          Start Best of The Week
-        </button>
+        <div class="page-intro-actions">
+          <button id="start-voting-btn" class="btn btn-primary btn-cta">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span class="btn-label">Start Best of The Week</span>
+          </button>
+          <button id="reset-scores-btn" class="btn btn-danger-ghost btn-cta">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg>
+            <span class="btn-label">Zerar pontuação</span>
+          </button>
+        </div>
+        <p class="sync-status" id="sync-status">Carregando dados do Notion...</p>
       </div>
 
       <!-- Categories Grid -->
