@@ -1,19 +1,22 @@
 const NOTION_API_BASE = 'https://api.notion.com/v1';
 const NOTION_VERSION = '2026-03-11';
-const DEFAULT_BEST_PAGE_ID = '2efb0bbef1538102b6fed7d0145cf99f';
+
+function isPlaceholderValue(value) {
+  return /^your_[a-z0-9_]+_here$/i.test((value || '').trim());
+}
 
 function getRequiredEnv(name) {
   const value = process.env[name];
 
-  if (!value) {
+  if (!value || isPlaceholderValue(value)) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
 
-  return value;
+  return value.trim();
 }
 
 export function getBestPageId() {
-  return process.env.NOTION_BEST_PAGE_ID || DEFAULT_BEST_PAGE_ID;
+  return getRequiredEnv('NOTION_BEST_PAGE_ID');
 }
 
 async function notionRequest(path, { method = 'GET', body } = {}) {
