@@ -6,6 +6,8 @@ import { calculateTotalScores } from './utils.js';
 import { FALLBACK_PARTICIPANTS_DATA, cloneParticipants } from './shared.js';
 
 const API_BASE = '/api/melhores';
+const PENDING_ACTIONS_STORAGE_KEY = 'melhores_pending_actions';
+const PENDING_STATE_STORAGE_KEY = 'melhores_pending_state';
 
 let participantState = withTotals(cloneParticipants(FALLBACK_PARTICIPANTS_DATA));
 let sourceInfo = {
@@ -13,6 +15,85 @@ let sourceInfo = {
   syncedAt: null,
   error: null,
 };
+
+function isStorageAvailable() {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function readStoredJson(key, fallbackValue) {
+  if (!isStorageAvailable()) return fallbackValue;
+
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallbackValue;
+  } catch (error) {
+    return fallbackValue;
+  }
+}
+
+function writeStoredJson(key, value) {
+  if (!isStorageAvailable()) return;
+  window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function removeStoredValue(key) {
+  if (!isStorageAvailable()) return;
+  window.localStorage.removeItem(key);
+}
+
+function readPendingActions() {
+  const actions = readStoredJson(PENDING_ACTIONS_STORAGE_KEY, []);
+  return Array.isArray(actions) ? actions : [];
+}
+
+function writePendingActions(actions) {
+  if (!actions.length) {
+    removeStoredValue(PENDING_ACTIONS_STORAGE_KEY);
+    return;
+  }
+
+  writeStoredJson(PENDING_ACTIONS_STORAGE_KEY, actions);
+}
+
+function savePendingSnapshot(errorMessage) {
+  writeStoredJson(PENDING_STATE_STORAGE_KEY, {
+    participants: participantState,
+    sourceInfo: {
+      source: 'pending',
+      syncedAt: null,
+      error: errorMessage,
+    },
+  });
+}
+
+function restorePendingSnapshot(errorMessage = null) {
+  const snapshot = readStoredJson(PENDING_STATE_STORAGE_KEY, null);
+
+  if (!snapshot?.participants) {
+    return false;
+  }
+
+  participantState = withTotals(snapshot.participants);
+  sourceInfo = {
+    source: 'pending',
+    syncedAt: snapshot?.sourceInfo?.syncedAt || null,
+    error: errorMessage || snapshot?.sourceInfo?.error || 'Existem alterações pendentes para enviar ao Notion.',
+  };
+
+  return true;
+}
+
+function clearPendingPersistence() {
+  removeStoredValue(PENDING_ACTIONS_STORAGE_KEY);
+  removeStoredValue(PENDING_STATE_STORAGE_KEY);
+}
+
+function queuePendingAction(action, errorMessage) {
+  const actions = readPendingActions();
+  actions.push(action);
+  writePendingActions(actions);
+  savePendingSnapshot(errorMessage);
+}
 
 function withTotals(participants) {
   return participants.map((participant) => ({
@@ -70,6 +151,41 @@ async function requestJson(path, options = {}) {
   }
 
   return payload;
+}
+
+async function flushPendingActions() {
+  const actions = readPendingActions();
+
+  if (!actions.length) {
+    return null;
+  }
+
+  let lastPayload = null;
+  let processedCount = 0;
+
+  for (const action of actions) {
+    try {
+      if (action.type === 'apply') {
+        lastPayload = await requestJson('/apply', {
+          method: 'POST',
+          body: action.payload || {},
+        });
+      } else if (action.type === 'reset') {
+        lastPayload = await requestJson('/reset', {
+          method: 'POST',
+        });
+      }
+
+      processedCount += 1;
+    } catch (error) {
+      const remainingActions = actions.slice(processedCount);
+      writePendingActions(remainingActions);
+      throw error;
+    }
+  }
+
+  clearPendingPersistence();
+  return lastPayload;
 }
 
 function applyVotingLocally(sessionResults, bestWinnerId, worstWinnerId) {
@@ -139,14 +255,24 @@ export function getSourceInfo() {
 
 export async function loadParticipantsData() {
   try {
-    const payload = await requestJson('/state');
+    const pendingPayload = await flushPendingActions();
+    const payload = pendingPayload || await requestJson('/state');
     participantState = hydrateParticipants(payload.participants || []);
     sourceInfo = {
       source: payload.source || 'notion',
       syncedAt: payload.syncedAt || new Date().toISOString(),
       error: null,
     };
+
+    clearPendingPersistence();
   } catch (error) {
+    if (restorePendingSnapshot(error.message)) {
+      return {
+        participants: participantState,
+        sourceInfo,
+      };
+    }
+
     participantState = withTotals(cloneParticipants(FALLBACK_PARTICIPANTS_DATA));
     sourceInfo = {
       source: 'fallback',
@@ -179,11 +305,26 @@ export async function persistVotingSession({ sessionResults, bestWinnerId, worst
       syncedAt: payload.syncedAt || new Date().toISOString(),
       error: null,
     };
+
+    clearPendingPersistence();
   } catch (error) {
     applyVotingLocally(sessionResults, bestWinnerId, worstWinnerId);
+    queuePendingAction(
+      {
+        type: 'apply',
+        payload: {
+          sessionResults,
+          bestWinnerId,
+          worstWinnerId,
+          voteDate,
+        },
+      },
+      error.message,
+    );
     sourceInfo = {
       ...sourceInfo,
-      source: 'fallback',
+      source: 'pending',
+      syncedAt: null,
       error: error.message,
     };
   }
@@ -206,11 +347,15 @@ export async function resetAllScores() {
       syncedAt: payload.syncedAt || new Date().toISOString(),
       error: null,
     };
+
+    clearPendingPersistence();
   } catch (error) {
     resetScoresLocally();
+    queuePendingAction({ type: 'reset' }, error.message);
     sourceInfo = {
       ...sourceInfo,
-      source: 'fallback',
+      source: 'pending',
+      syncedAt: null,
       error: error.message,
     };
   }

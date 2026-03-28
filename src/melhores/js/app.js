@@ -24,8 +24,10 @@ let botwVotes = {};
 let botwStep = 'SPEAKING';
 let bestWinnerId = null;
 let worstWinnerId = null;
+let pendingRetryIntervalId = null;
 
 const CATEGORIES_ORDER = CATEGORY_DEFINITIONS;
+const PENDING_RETRY_INTERVAL_MS = 30000;
 
 const SFX = {
   win: new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3'),
@@ -42,6 +44,7 @@ Object.entries(SFX).forEach(([key, audio]) => {
 document.addEventListener('DOMContentLoaded', async () => {
   bindVotingEvents();
   await refreshDashboard('Carregando dados...');
+  startPendingRetryLoop();
 });
 
 function getButtonLabel(button) {
@@ -80,6 +83,14 @@ function renderSyncStatus() {
     return;
   }
 
+  if (sourceInfo.source === 'pending') {
+    syncStatusEl.dataset.state = 'pending';
+    syncStatusEl.textContent = sourceInfo.error
+      ? `Pontuação salva localmente e pendente no Notion: ${sourceInfo.error}`
+      : 'Pontuação salva localmente e pendente de envio ao Notion';
+    return;
+  }
+
   syncStatusEl.dataset.state = 'fallback';
   syncStatusEl.textContent = sourceInfo.error
     ? `Modo local: ${sourceInfo.error}`
@@ -111,6 +122,24 @@ async function refreshDashboard(loadingLabel = 'Sincronizando...') {
 
   setButtonBusy(startButton, false, loadingLabel);
   setButtonBusy(resetButton, false, loadingLabel);
+}
+
+function startPendingRetryLoop() {
+  clearInterval(pendingRetryIntervalId);
+
+  pendingRetryIntervalId = setInterval(async () => {
+    if (getSourceInfo().source !== 'pending') {
+      return;
+    }
+
+    const votingModal = $('#voting-modal');
+    if (votingModal && votingModal.style.display === 'flex') {
+      return;
+    }
+
+    await loadParticipantsData();
+    renderDashboard();
+  }, PENDING_RETRY_INTERVAL_MS);
 }
 
 function renderCategory(containerId, sortedData) {
