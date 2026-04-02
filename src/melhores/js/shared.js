@@ -7,6 +7,22 @@ export const CATEGORY_DEFINITIONS = [
   { key: 'conhecimentos', title: 'Conhecimentos', icon: '📚' },
 ];
 
+export const PARTICIPANT_PHOTOS_BY_ID = {
+  'alexandre-costa': 'https://drive.google.com/thumbnail?id=1RwUjMsy0E7TZ5GB_BStHdJ-5hy42USs0&sz=w1000',
+  andrei: 'https://drive.google.com/thumbnail?id=1d9rRiMsJTry4r9wI6nOe57OMmHvggjbS&sz=w1000',
+  bruno: 'https://drive.google.com/thumbnail?id=1f0msxOiQqKtRxeiVYfmCFwho94o4pNEj&sz=w1000',
+  camila: 'https://drive.google.com/thumbnail?id=12tEOA57thaxY7TXBwDGsdWNayhTJOgLR&sz=w1000',
+  emily: 'https://drive.google.com/thumbnail?id=13RUl6BDdHIFVTHn5sid0CBAQ2UA4zP7P&sz=w1000',
+  gabriel: 'https://drive.google.com/thumbnail?id=1QO_3a3xeb5XWlYWrDn0pvU5xEJxL-odu&sz=w1000',
+  gean: 'https://drive.google.com/thumbnail?id=1nWLlyaDQDBYbsKGKQM4oFPrNDV7JmpMT&sz=w1000',
+  luana: 'https://drive.google.com/thumbnail?id=1EBOH4s0tVTsgMpv_WCqdyskgMeR0DsSo&sz=w1000',
+  matheus: 'https://drive.google.com/thumbnail?id=1Md426I9-oA4gBGOajD_umAyEHxyJ9zvY&sz=w1000',
+  mavi: 'https://drive.google.com/thumbnail?id=1tKOxrwNHT3a0ZHV14rVm41UxSMaLSFlu&sz=w1000',
+  mayra: 'https://drive.google.com/thumbnail?id=1Pczwq7h2kAt12w5GRz-2EaQdRYk6gyj0&sz=w1000',
+  nicole: 'https://drive.google.com/thumbnail?id=149vEcHjFw84jBE4jksqg4VF3bHTtVo7f&sz=w1000',
+  'alexandre-neto': 'https://drive.google.com/thumbnail?id=14QD9rRrhuv4biqLzNmlnc3U4ttPtet8P&sz=w1000',
+};
+
 export const PARTICIPANT_REGISTRY = [
   { id: 'luana', displayName: 'Luana', notionName: 'Luana', handle: '@luana', aliases: ['luana'] },
   { id: 'jf', displayName: 'JF', notionName: 'JF', handle: '@jf', aliases: ['jf'] },
@@ -31,7 +47,10 @@ export const PARTICIPANT_REGISTRY = [
   { id: 'nicole', displayName: 'Nicole', notionName: 'Nicole', handle: '@nicole', aliases: ['nicole'] },
   { id: 'bruno', displayName: 'Bruno', notionName: 'Bruno Zardo', handle: '@bruno', aliases: ['bruno', 'bruno zardo'] },
   { id: 'gabriel', displayName: 'Gabriel', notionName: 'Gabriel', handle: '@gabriel', aliases: ['gabriel', 'gabriel tolentino'] },
-];
+].map((participant) => ({
+  ...participant,
+  photoUrl: PARTICIPANT_PHOTOS_BY_ID[participant.id] ?? null,
+}));
 
 export const INITIAL_PARTICIPANTS_DATA = [
   { id: 'luana', name: 'Luana', handle: '@luana', categories: { exercicio: 3, familia: 4, alimentacao: 0, hobbies: 3, conhecimentos: 3, bestWeek: 0 }, objectives: { exercicio: 'Exercício 3x na semana', familia: 'Mandar mensagem para família 1x por semana', alimentacao: 'Comer doce apenas 2 dias na semana', hobbies: '1 encontro com amigos ou família por semana', conhecimentos: '1 podcast ou leitura de notícias por semana' }, scoreBreakdown: { melhorFato: 0, piorFato: 0 } },
@@ -51,7 +70,10 @@ export const INITIAL_PARTICIPANTS_DATA = [
   { id: 'nicole', name: 'Nicole', handle: '@nicole', categories: { exercicio: 0, familia: 3, alimentacao: 2, hobbies: 0, conhecimentos: 4, bestWeek: -1 }, objectives: { exercicio: 'Exercício físico todos os dias (corrida ou academia)', familia: 'Ligar para minhas irmãs 1x por semana', alimentacao: 'Seguir dieta com apenas 1 refeição livre', hobbies: null, conhecimentos: 'Ler 105 páginas de livro de autoconhecimento' }, scoreBreakdown: { melhorFato: 0, piorFato: -1 } },
   { id: 'bruno', name: 'Bruno', handle: '@bruno', categories: { exercicio: -1, familia: 0, alimentacao: -1, hobbies: -1, conhecimentos: -1, bestWeek: 0 }, objectives: { exercicio: null, familia: null, alimentacao: null, hobbies: null, conhecimentos: null }, scoreBreakdown: { melhorFato: 0, piorFato: 0 } },
   { id: 'gabriel', name: 'Gabriel', handle: '@gabriel', categories: { exercicio: -4, familia: -4, alimentacao: -4, hobbies: -4, conhecimentos: -4, bestWeek: -1 }, objectives: { exercicio: null, familia: null, alimentacao: null, hobbies: null, conhecimentos: null }, scoreBreakdown: { melhorFato: 0, piorFato: -1 } },
-];
+].map((participant) => ({
+  ...participant,
+  photoUrl: PARTICIPANT_PHOTOS_BY_ID[participant.id] ?? null,
+}));
 
 const PARTICIPANT_LOOKUP = new Map();
 
@@ -135,6 +157,7 @@ export function buildParticipantFromRegistry(participantId) {
         id: definition.id,
         name: definition.displayName,
         handle: definition.handle,
+        photoUrl: definition.photoUrl || null,
         categories: createEmptyCategories(),
         objectives: createEmptyObjectives(),
         scoreBreakdown: createEmptyScoreBreakdown(),

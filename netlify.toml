@@ -4,6 +4,26 @@
   functions = "netlify/functions"
 
 [[redirects]]
+  from = "/melhores"
+  to = "/melhores/"
+  status = 301
+
+[[redirects]]
+  from = "/src/melhores"
+  to = "/melhores/"
+  status = 301
+
+[[redirects]]
+  from = "/src/melhores/"
+  to = "/melhores/"
+  status = 301
+
+[[redirects]]
+  from = "/src/melhores/index.html"
+  to = "/melhores/"
+  status = 301
+
+[[redirects]]
   from = "/api/melhores/state"
   to = "/.netlify/functions/melhores-state"
   status = 200

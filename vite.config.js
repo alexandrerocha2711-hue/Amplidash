@@ -6,6 +6,15 @@ import {
   handleMelhoresStateRequest,
 } from './server/melhores-api.js';
 
+const melhoresHtmlAliases = new Set([
+  '/melhores',
+  '/melhores/',
+  '/melhores/index.html',
+  '/src/melhores',
+  '/src/melhores/',
+  '/src/melhores/index.html',
+]);
+
 async function readJsonBody(req) {
   const chunks = [];
 
@@ -41,7 +50,11 @@ export default defineConfig({
       name: 'melhores-dev-api',
       configureServer(server) {
         server.middlewares.use(async (req, res, next) => {
-          const pathname = (req.url || '').split('?')[0];
+          const [pathname, search = ''] = (req.url || '').split('?');
+
+          if (req.method === 'GET' && melhoresHtmlAliases.has(pathname)) {
+            req.url = `/melhores/index.html${search ? `?${search}` : ''}`;
+          }
 
           if (req.method === 'OPTIONS' && pathname.startsWith('/api/melhores/')) {
             sendJson(res, {
@@ -82,7 +95,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        melhores: resolve(__dirname, 'src/melhores/index.html')
+        melhores: resolve(__dirname, 'melhores/index.html')
       }
     }
   }

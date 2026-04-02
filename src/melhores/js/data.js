@@ -6,6 +6,42 @@ import { calculateTotalScores } from './utils.js';
 import { INITIAL_PARTICIPANTS_DATA, cloneParticipants } from './shared.js';
 
 const STORAGE_KEY = 'amplify_melhores_v1';
+const WEEKLY_FACT_HISTORY_STORAGE_KEY = 'amplify_melhores_history_v1';
+const PARTICIPANT_DEFAULTS_BY_ID = new Map(
+  INITIAL_PARTICIPANTS_DATA.map((participant) => [participant.id, participant]),
+);
+const INITIAL_WEEKLY_FACT_HISTORY = [
+  {
+    id: '2026-02-20',
+    date: '2026-02-20',
+    best: { participantId: 'luan', label: 'Luan', description: 'Viajou para cidade natal' },
+    worst: { participantId: 'nicole', label: 'Nicole', description: 'Ciclo de relacionamento terminado' },
+  },
+  {
+    id: '2026-02-27',
+    date: '2026-02-27',
+    best: { participantId: 'mayra', label: 'Mayra', description: 'Participou de show' },
+    worst: { participantId: 'luan', label: 'Luan', description: 'Torceu o pé no futebol' },
+  },
+  {
+    id: '2026-03-06',
+    date: '2026-03-06',
+    best: { participantId: 'mayra', label: 'Mayra', description: 'Final de semana' },
+    worst: { participantId: 'gabriel', label: 'Gabriel', description: 'Invasão das Baratas' },
+  },
+  {
+    id: '2026-03-13',
+    date: '2026-03-13',
+    best: { participantId: 'gean', label: 'Gean', description: 'Comemoração do niver' },
+    worst: { participantId: 'camila', label: 'Camila', description: 'Corrida tensa com o uber' },
+  },
+  {
+    id: '2026-03-20',
+    date: '2026-03-20',
+    best: { participantId: 'leonardo', label: 'Leo', description: 'Carro ganhando elogios' },
+    worst: { participantId: 'alexandre-neto', label: 'Ale Neto', description: 'PC dando pau' },
+  },
+];
 
 function isStorageAvailable() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -31,11 +67,76 @@ function writeStoredState(state) {
   }
 }
 
+function readStoredWeeklyFactHistory() {
+  if (!isStorageAvailable()) return null;
+  try {
+    const raw = window.localStorage.getItem(WEEKLY_FACT_HISTORY_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.error('Error reading weekly fact history from local storage:', error);
+    return null;
+  }
+}
+
+function writeStoredWeeklyFactHistory(entries) {
+  if (!isStorageAvailable()) return;
+  try {
+    window.localStorage.setItem(WEEKLY_FACT_HISTORY_STORAGE_KEY, JSON.stringify(entries));
+  } catch (error) {
+    console.error('Error writing weekly fact history to local storage:', error);
+  }
+}
+
 function withTotals(participants) {
   return participants.map((participant) => ({
     ...participant,
     totalPoints: calculateTotalScores(participant.categories),
   }));
+}
+
+function normalizeParticipantMetadata(participants) {
+  return participants.map((participant) => {
+    const defaults = PARTICIPANT_DEFAULTS_BY_ID.get(participant.id);
+
+    if (!defaults) {
+      return {
+        ...participant,
+        photoUrl: participant.photoUrl || null,
+      };
+    }
+
+    return {
+      ...participant,
+      name: participant.name || defaults.name,
+      handle: participant.handle || defaults.handle,
+      photoUrl: participant.photoUrl ?? defaults.photoUrl ?? null,
+    };
+  });
+}
+
+function normalizeWeeklyFactHistory(entries) {
+  const mergedEntriesById = new Map(
+    INITIAL_WEEKLY_FACT_HISTORY.map((entry) => [entry.id, cloneParticipants([entry])[0]]),
+  );
+
+  for (const entry of entries || []) {
+    if (!entry?.id) continue;
+    mergedEntriesById.set(entry.id, {
+      ...entry,
+      best: {
+        participantId: entry.best?.participantId || null,
+        label: entry.best?.label || '',
+        description: entry.best?.description || '',
+      },
+      worst: {
+        participantId: entry.worst?.participantId || null,
+        label: entry.worst?.label || '',
+        description: entry.worst?.description || '',
+      },
+    });
+  }
+
+  return [...mergedEntriesById.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // Initial hydration: try storage, then fallback to INITIAL_PARTICIPANTS_DATA
@@ -45,7 +146,10 @@ if (!participantState) {
   participantState = cloneParticipants(INITIAL_PARTICIPANTS_DATA);
 }
 
+participantState = normalizeParticipantMetadata(participantState);
 participantState = withTotals(participantState);
+
+let weeklyFactHistory = normalizeWeeklyFactHistory(readStoredWeeklyFactHistory() || []);
 
 export function getParticipantsData() {
   return participantState;
@@ -59,10 +163,15 @@ export function getSourceInfo() {
   };
 }
 
+export function getWeeklyFactHistory() {
+  return weeklyFactHistory;
+}
+
 export async function loadParticipantsData() {
   // Always returns the current in-memory state
   return {
     participants: participantState,
+    weeklyFactHistory,
     sourceInfo: getSourceInfo(),
   };
 }
@@ -104,8 +213,31 @@ export async function persistVotingSession({ sessionResults, bestWinnerId, worst
 
   return {
     participants: participantState,
+    weeklyFactHistory,
     sourceInfo: getSourceInfo(),
   };
+}
+
+export function recordWeeklyFactHistory(entry) {
+  const normalizedEntry = {
+    id: entry.id || entry.date,
+    date: entry.date,
+    best: {
+      participantId: entry.best?.participantId || null,
+      label: entry.best?.label || '',
+      description: entry.best?.description || '',
+    },
+    worst: {
+      participantId: entry.worst?.participantId || null,
+      label: entry.worst?.label || '',
+      description: entry.worst?.description || '',
+    },
+  };
+
+  weeklyFactHistory = normalizeWeeklyFactHistory([...weeklyFactHistory, normalizedEntry]);
+  writeStoredWeeklyFactHistory(weeklyFactHistory);
+
+  return weeklyFactHistory;
 }
 
 export function addParticipant({ name, handle, objectives }) {
@@ -114,6 +246,7 @@ export function addParticipant({ name, handle, objectives }) {
     id,
     name,
     handle: handle.startsWith('@') ? handle : `@${handle}`,
+    photoUrl: null,
     categories: {
       exercicio: 0,
       familia: 0,
@@ -167,6 +300,7 @@ export async function resetAllScores() {
 
   return {
     participants: participantState,
+    weeklyFactHistory,
     sourceInfo: getSourceInfo(),
   };
 }

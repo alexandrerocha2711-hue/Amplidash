@@ -51,6 +51,7 @@
             </button>
             <div class="dropdown-content" id="manage-dropdown">
               <button id="add-voter-btn">➕ Adicionar novo participante</button>
+              <button id="add-weekly-fact-btn">📝 Adicionar melhor e pior fato da semana</button>
               <button id="new-cycle-btn">🚀 Iniciar novo melhores</button>
             </div>
           </div>
@@ -163,6 +164,35 @@
         </div>
       </section>
 
+      <section class="section history-section">
+        <div class="table-header">
+          <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18"></path>
+              <path d="M8 14h.01"></path>
+              <path d="M12 10h.01"></path>
+              <path d="M16 6h.01"></path>
+              <path d="M7 14l4-4 3 3 4-4"></path>
+            </svg>
+            Melhor da Semana - Descrição do Fato
+          </h2>
+        </div>
+        <div class="table-container">
+          <table class="ranking-table history-table">
+            <thead>
+              <tr>
+                <th class="history-date-col">Data</th>
+                <th>Melhor | Nome</th>
+                <th>Pior | Nome</th>
+              </tr>
+            </thead>
+            <tbody id="weekly-facts-tbody">
+              <!-- Rows are inserted via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
     </div>
   </main>
 
@@ -202,18 +232,55 @@
           <!-- Injected via JS -->
         </div>
 
+        <div id="modal-history-capture" class="weekly-history-capture" style="display: none;">
+          <div class="mgmt-form-group">
+            <label for="weekly-facts-date">Data da semana</label>
+            <input type="date" id="weekly-facts-date" class="mgmt-input" />
+          </div>
+
+          <div class="weekly-history-grid">
+            <div class="weekly-history-card">
+              <div class="weekly-history-card-header">
+                <span class="weekly-history-badge badge-best">Melhor Fato</span>
+                <div id="weekly-best-summary"></div>
+              </div>
+              <div class="mgmt-form-group">
+                <label for="weekly-best-description">Descrição do melhor fato</label>
+                <textarea id="weekly-best-description" class="mgmt-input mgmt-area" placeholder="Ex: Participou de show"></textarea>
+              </div>
+            </div>
+
+            <div class="weekly-history-card">
+              <div class="weekly-history-card-header">
+                <span class="weekly-history-badge badge-worst">Pior Fato</span>
+                <div id="weekly-worst-summary"></div>
+              </div>
+              <div class="mgmt-form-group">
+                <label for="weekly-worst-description">Descrição do pior fato</label>
+                <textarea id="weekly-worst-description" class="mgmt-input mgmt-area" placeholder="Ex: Torceu o pé no futebol"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Celebration/Shame Screen (Hidden by default) -->
         <div id="modal-celebration-screen" class="modal-celebration" style="display: none;">
           <div id="celebration-particles" class="celebration-particles"></div>
           <div class="celebration-content">
             <div class="celebration-avatar" id="celebration-avatar"></div>
             <h2 class="celebration-title" id="celebration-title">WINNER!</h2>
+            <p class="celebration-name" id="celebration-name">Alexandre Costa</p>
             <p class="celebration-subtitle" id="celebration-subtitle">Melhor Fato da Semana</p>
           </div>
         </div>
       </div>
 
       <!-- Action: Speaker Cycle (BOTW Only) -->
+      <div class="modal-actions modal-actions-nav" id="modal-actions-nav" style="display: none;">
+        <button class="btn btn-secondary" id="btn-back-step" style="display: none;">Voltar</button>
+        <button class="btn btn-secondary" id="btn-skip-step">Pular participante ausente</button>
+      </div>
+
       <div class="modal-actions" id="modal-actions-speaker" style="display: none;">
         <button class="btn btn-primary" id="btn-next-speaker" style="width: 100%;">
           Próximo Participante
@@ -226,8 +293,8 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
           (-2)
          </button>
-         <button class="btn" id="btn-vote-neutral" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);" title="Neutro/Pular">
-          (0)
+         <button class="btn" id="btn-vote-neutral" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);" title="Neutro">
+          Neutro (0)
          </button>
          <button class="btn btn-yes" id="btn-vote-yes" title="Fez">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
@@ -237,6 +304,10 @@
 
       <div class="modal-actions" id="modal-actions-finish" style="display: none;">
          <button class="btn btn-primary btn-finish" id="btn-finish-voting">Finalizar Votação</button>
+      </div>
+
+      <div class="modal-actions" id="modal-actions-history" style="display: none;">
+         <button class="btn btn-primary btn-finish" id="btn-save-history">Salvar fatos e continuar</button>
       </div>
     </div>
   </div>
