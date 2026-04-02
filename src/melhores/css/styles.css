@@ -397,10 +397,51 @@ body::before {
   margin-bottom: 16px;
 }
 .modal-actions .btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 16px; }
-.btn-no { background: rgba(201, 0, 67, 0.2); color: #fff; border: 1px solid rgba(201, 0, 67, 0.5); }
-.btn-no:hover { background: rgba(201, 0, 67, 0.4); transform: scale(0.98); }
+.btn-neutral { background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255, 255, 255, 0.16); }
+.btn-neutral:hover { background: rgba(255, 255, 255, 0.14); transform: translateY(-2px); }
 .btn-yes { background: rgba(34, 197, 94, 0.2); color: #fff; border: 1px solid rgba(34, 197, 94, 0.5); }
 .btn-yes:hover { background: rgba(34, 197, 94, 0.4); transform: scale(1.02); box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); }
+.objective-vote-btn {
+  min-height: 92px;
+  border-radius: 18px;
+  gap: 14px;
+  justify-content: flex-start;
+  padding: 18px 20px;
+}
+.objective-vote-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 1.45rem;
+  flex-shrink: 0;
+}
+.objective-vote-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+}
+.objective-vote-title {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.objective-vote-points {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.1;
+}
+.btn-neutral .objective-vote-icon {
+  background: rgba(255, 255, 255, 0.08);
+}
+.btn-yes .objective-vote-icon {
+  background: rgba(255, 255, 255, 0.14);
+}
 
 .btn-finish { width: 100%; font-size: 1.1rem; padding: 16px; }
 

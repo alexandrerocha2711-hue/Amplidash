@@ -7,6 +7,7 @@ import { INITIAL_PARTICIPANTS_DATA, cloneParticipants } from './shared.js';
 
 const STORAGE_KEY = 'amplify_melhores_v1';
 const WEEKLY_FACT_HISTORY_STORAGE_KEY = 'amplify_melhores_history_v1';
+const REMOVED_PARTICIPANT_IDS = new Set(['vitor']);
 const PARTICIPANT_DEFAULTS_BY_ID = new Map(
   INITIAL_PARTICIPANTS_DATA.map((participant) => [participant.id, participant]),
 );
@@ -95,7 +96,9 @@ function withTotals(participants) {
 }
 
 function normalizeParticipantMetadata(participants) {
-  return participants.map((participant) => {
+  return participants
+    .filter((participant) => !REMOVED_PARTICIPANT_IDS.has(participant.id))
+    .map((participant) => {
     const defaults = PARTICIPANT_DEFAULTS_BY_ID.get(participant.id);
 
     if (!defaults) {
@@ -111,7 +114,16 @@ function normalizeParticipantMetadata(participants) {
       handle: participant.handle || defaults.handle,
       photoUrl: participant.photoUrl ?? defaults.photoUrl ?? null,
     };
-  });
+    });
+}
+
+function normalizeFactDescription(value) {
+  return String(value || '').trim();
+}
+
+function hasMeaningfulFactDescription(value) {
+  const normalized = normalizeFactDescription(value);
+  return normalized !== '' && normalized !== '.';
 }
 
 function normalizeWeeklyFactHistory(entries) {
@@ -126,17 +138,23 @@ function normalizeWeeklyFactHistory(entries) {
       best: {
         participantId: entry.best?.participantId || null,
         label: entry.best?.label || '',
-        description: entry.best?.description || '',
+        description: normalizeFactDescription(entry.best?.description),
       },
       worst: {
         participantId: entry.worst?.participantId || null,
         label: entry.worst?.label || '',
-        description: entry.worst?.description || '',
+        description: normalizeFactDescription(entry.worst?.description),
       },
     });
   }
 
-  return [...mergedEntriesById.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return [...mergedEntriesById.values()]
+    .filter((entry) => (
+      entry?.date
+      && hasMeaningfulFactDescription(entry.best?.description)
+      && hasMeaningfulFactDescription(entry.worst?.description)
+    ))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // Initial hydration: try storage, then fallback to INITIAL_PARTICIPANTS_DATA
@@ -148,8 +166,10 @@ if (!participantState) {
 
 participantState = normalizeParticipantMetadata(participantState);
 participantState = withTotals(participantState);
+writeStoredState(participantState);
 
 let weeklyFactHistory = normalizeWeeklyFactHistory(readStoredWeeklyFactHistory() || []);
+writeStoredWeeklyFactHistory(weeklyFactHistory);
 
 export function getParticipantsData() {
   return participantState;
@@ -225,12 +245,12 @@ export function recordWeeklyFactHistory(entry) {
     best: {
       participantId: entry.best?.participantId || null,
       label: entry.best?.label || '',
-      description: entry.best?.description || '',
+      description: normalizeFactDescription(entry.best?.description),
     },
     worst: {
       participantId: entry.worst?.participantId || null,
       label: entry.worst?.label || '',
-      description: entry.worst?.description || '',
+      description: normalizeFactDescription(entry.worst?.description),
     },
   };
 

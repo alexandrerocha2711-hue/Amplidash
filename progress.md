@@ -15,3 +15,5 @@ Original prompt: Integrar `src/melhores/` ao Notion oficial do "The Best", sincr
 - 2026-04-02: tentativa de validação visual automatizada bloqueada porque o pacote `playwright` não está disponível no ambiente atual.
 - 2026-04-02: adicionada ação manual no menu `Gerenciar` para registrar melhor e pior fato da semana com data, responsável e descrição para cada lado.
 - 2026-04-02: otimizado visualmente o pop-up manual de histórico semanal, com modal mais largo, painel de introdução, coluna de data dedicada e cards separados para melhor/pior fato.
+- 2026-04-02: simplificada a votação de objetivos para apenas duas opções visuais: `💩` valendo `0` e `⭐` valendo `1`, removendo o botão de `-2`.
+- 2026-04-02: Vitor removido da base fixa do jogo e também filtrado do `localStorage` ao carregar, para não reaparecer no dashboard nem nas votações.

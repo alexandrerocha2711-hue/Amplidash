@@ -194,6 +194,11 @@ function formatDateForInput(date = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
+function hasMeaningfulWeeklyFactDescription(value) {
+  const normalized = String(value || '').trim();
+  return normalized !== '' && normalized !== '.';
+}
+
 function buildHistoryFactMarkup(entrySide) {
   const participantsById = buildParticipantsById();
   const participant = entrySide?.participantId ? participantsById.get(entrySide.participantId) : null;
@@ -370,7 +375,6 @@ function bindVotingEvents() {
   });
 
   $('#btn-vote-yes')?.addEventListener('click', () => handleVote(1));
-  $('#btn-vote-no')?.addEventListener('click', () => handleVote(-2));
   $('#btn-vote-neutral')?.addEventListener('click', () => handleVote(0));
   $('#btn-next-speaker')?.addEventListener('click', handleAdvanceSpeaker);
   $('#btn-finish-voting')?.addEventListener('click', finishVotingSystem);
@@ -609,8 +613,14 @@ async function handleMgmtNext() {
     mgmtData.worstParticipantId = $('#mgmt-worst-participant')?.value || '';
     mgmtData.worstDescription = $('#mgmt-worst-description')?.value.trim() || '';
 
-    if (!mgmtData.date || !mgmtData.bestParticipantId || !mgmtData.bestDescription || !mgmtData.worstParticipantId || !mgmtData.worstDescription) {
-      window.alert('Preencha data, responsavel e descricao para o melhor e o pior fato.');
+    if (
+      !mgmtData.date
+      || !mgmtData.bestParticipantId
+      || !hasMeaningfulWeeklyFactDescription(mgmtData.bestDescription)
+      || !mgmtData.worstParticipantId
+      || !hasMeaningfulWeeklyFactDescription(mgmtData.worstDescription)
+    ) {
+      window.alert('Preencha data, responsável e descrições válidas para o melhor e o pior fato. Apenas "." não é permitido.');
       return;
     }
 
@@ -1100,8 +1110,8 @@ function handleSaveWeeklyFactHistory() {
   const bestWinner = getParticipantsData().find((participant) => participant.id === bestWinnerId);
   const worstWinner = getParticipantsData().find((participant) => participant.id === worstWinnerId);
 
-  if (!date || !bestDescription || !worstDescription) {
-    window.alert('Preencha a data e as duas descrições para salvar o histórico da semana.');
+  if (!date || !hasMeaningfulWeeklyFactDescription(bestDescription) || !hasMeaningfulWeeklyFactDescription(worstDescription)) {
+    window.alert('Preencha a data e duas descrições válidas para salvar o histórico da semana. Apenas "." não é permitido.');
     return;
   }
 

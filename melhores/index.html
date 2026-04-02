@@ -289,16 +289,19 @@
       </div>
 
       <div class="modal-actions" id="modal-actions-voting">
-         <button class="btn btn-no" id="btn-vote-no" title="Não Fez">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          (-2)
+         <button class="btn btn-neutral objective-vote-btn" id="btn-vote-neutral" title="Coco (0 pontos)">
+          <span class="objective-vote-icon" aria-hidden="true">💩</span>
+          <span class="objective-vote-copy">
+            <span class="objective-vote-title">Coco</span>
+            <span class="objective-vote-points">0 ponto</span>
+          </span>
          </button>
-         <button class="btn" id="btn-vote-neutral" style="background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);" title="Neutro">
-          Neutro (0)
-         </button>
-         <button class="btn btn-yes" id="btn-vote-yes" title="Fez">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          (+1)
+         <button class="btn btn-yes objective-vote-btn" id="btn-vote-yes" title="Estrela (1 ponto)">
+          <span class="objective-vote-icon" aria-hidden="true">⭐</span>
+          <span class="objective-vote-copy">
+            <span class="objective-vote-title">Estrela</span>
+            <span class="objective-vote-points">1 ponto</span>
+          </span>
          </button>
       </div>
 
