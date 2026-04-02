@@ -43,8 +43,18 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg>
             <span class="btn-label">Zerar pontuação</span>
           </button>
+          
+          <div class="dropdown">
+            <button id="manage-btn" class="btn btn-secondary btn-cta">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="btn-label">Gerenciar</span>
+            </button>
+            <div class="dropdown-content" id="manage-dropdown">
+              <button id="add-voter-btn">➕ Adicionar novo participante</button>
+              <button id="new-cycle-btn">🚀 Iniciar novo melhores</button>
+            </div>
+          </div>
         </div>
-        <p class="sync-status" id="sync-status">Carregando dados do Notion...</p>
       </div>
 
       <!-- Categories Grid -->
@@ -227,6 +237,29 @@
 
       <div class="modal-actions" id="modal-actions-finish" style="display: none;">
          <button class="btn btn-primary btn-finish" id="btn-finish-voting">Finalizar Votação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Management Modal -->
+  <div id="management-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card">
+      <button class="modal-close-btn" id="management-close-btn">×</button>
+      
+      <div class="modal-header">
+        <span class="modal-category-icon" id="management-icon">⚙️</span>
+        <h3 class="modal-category-title" id="management-title">Gerenciar</h3>
+      </div>
+      
+      <div class="modal-body">
+        <div id="management-content">
+          <!-- Dynamic content: Form or Wizard -->
+        </div>
+      </div>
+
+      <div class="modal-actions" id="management-actions">
+        <button class="btn btn-secondary" id="management-btn-back" style="display: none;">Voltar</button>
+        <button class="btn btn-primary" id="management-btn-next">Próximo</button>
       </div>
     </div>
   </div>

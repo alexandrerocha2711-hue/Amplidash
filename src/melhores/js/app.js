@@ -27,7 +27,6 @@ let worstWinnerId = null;
 let pendingRetryIntervalId = null;
 
 const CATEGORIES_ORDER = CATEGORY_DEFINITIONS;
-const PENDING_RETRY_INTERVAL_MS = 30000;
 
 const SFX = {
   win: new Audio('https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3'),
@@ -44,7 +43,6 @@ Object.entries(SFX).forEach(([key, audio]) => {
 document.addEventListener('DOMContentLoaded', async () => {
   bindVotingEvents();
   await refreshDashboard('Carregando dados...');
-  startPendingRetryLoop();
 });
 
 function getButtonLabel(button) {
@@ -66,37 +64,6 @@ function setButtonBusy(button, isBusy, busyLabel) {
   }
 }
 
-function renderSyncStatus() {
-  const syncStatusEl = $('#sync-status');
-  if (!syncStatusEl) return;
-
-  const sourceInfo = getSourceInfo();
-  const syncTime = sourceInfo.syncedAt
-    ? new Date(sourceInfo.syncedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    : null;
-
-  if (sourceInfo.source === 'notion') {
-    syncStatusEl.dataset.state = 'notion';
-    syncStatusEl.textContent = syncTime
-      ? `Sincronizado com o Notion às ${syncTime}`
-      : 'Sincronizado com o Notion';
-    return;
-  }
-
-  if (sourceInfo.source === 'pending') {
-    syncStatusEl.dataset.state = 'pending';
-    syncStatusEl.textContent = sourceInfo.error
-      ? `Pontuação salva localmente e pendente no Notion: ${sourceInfo.error}`
-      : 'Pontuação salva localmente e pendente de envio ao Notion';
-    return;
-  }
-
-  syncStatusEl.dataset.state = 'fallback';
-  syncStatusEl.textContent = sourceInfo.error
-    ? `Modo local: ${sourceInfo.error}`
-    : 'Modo local ativo';
-}
-
 function renderDashboard() {
   const rankings = getCategorizedRankings();
 
@@ -107,10 +74,9 @@ function renderDashboard() {
   renderCategory('cat-conhecimentos', rankings.conhecimentos);
   renderCategory('cat-bestWeek', rankings.bestWeek);
   renderGeneralRanking(rankings.geral);
-  renderSyncStatus();
 }
 
-async function refreshDashboard(loadingLabel = 'Sincronizando...') {
+async function refreshDashboard(loadingLabel = 'Carregando...') {
   const startButton = $('#start-voting-btn');
   const resetButton = $('#reset-scores-btn');
 
@@ -122,24 +88,6 @@ async function refreshDashboard(loadingLabel = 'Sincronizando...') {
 
   setButtonBusy(startButton, false, loadingLabel);
   setButtonBusy(resetButton, false, loadingLabel);
-}
-
-function startPendingRetryLoop() {
-  clearInterval(pendingRetryIntervalId);
-
-  pendingRetryIntervalId = setInterval(async () => {
-    if (getSourceInfo().source !== 'pending') {
-      return;
-    }
-
-    const votingModal = $('#voting-modal');
-    if (votingModal && votingModal.style.display === 'flex') {
-      return;
-    }
-
-    await loadParticipantsData();
-    renderDashboard();
-  }, PENDING_RETRY_INTERVAL_MS);
 }
 
 function renderCategory(containerId, sortedData) {
@@ -219,11 +167,178 @@ function bindVotingEvents() {
     renderVotingStep();
   });
   $('#btn-finish-voting')?.addEventListener('click', finishVotingSystem);
+
+  // Management Events
+  $('#manage-dropdown #add-voter-btn')?.addEventListener('click', startAddParticipantFlow);
+  $('#manage-dropdown #new-cycle-btn')?.addEventListener('click', startNewCycleFlow);
+  $('#management-close-btn')?.addEventListener('click', () => {
+    $('#management-modal').style.display = 'none';
+  });
+  $('#management-btn-back')?.addEventListener('click', handleMgmtBack);
+  $('#management-btn-next')?.addEventListener('click', handleMgmtNext);
+}
+
+// Management Flow State
+let mgmtFlow = null; // 'ADD_PARTICIPANT' | 'NEW_CYCLE'
+let mgmtStep = 0;
+let mgmtData = {};
+const MGMT_CATEGORIES = CATEGORY_DEFINITIONS.filter(c => c.key !== 'bestWeek');
+
+function startAddParticipantFlow() {
+  mgmtFlow = 'ADD_PARTICIPANT';
+  mgmtStep = 0;
+  mgmtData = { name: '', handle: '', objectives: {} };
+  
+  $('#management-modal').style.display = 'flex';
+  $('#management-title').textContent = 'Adicionar Participante';
+  $('#management-icon').textContent = '👤';
+  renderManagementStep();
+}
+
+async function startNewCycleFlow() {
+  const confirmed = window.confirm('Isso vai zerar as pontuações atuais e permitir redefinir os objetivos de todos. Continuar?');
+  if (!confirmed) return;
+
+  await resetAllScores();
+  renderDashboard();
+
+  mgmtFlow = 'NEW_CYCLE';
+  mgmtStep = 0;
+  mgmtData = { participants: getParticipantsData(), currentIndex: 0, currentCatIndex: 0 };
+
+  $('#management-modal').style.display = 'flex';
+  $('#management-title').textContent = 'Novo Ciclo: Objetivos';
+  $('#management-icon').textContent = '🚀';
+  renderManagementStep();
+}
+
+function renderManagementStep() {
+  const content = $('#management-content');
+  const btnNext = $('#management-btn-next');
+  const btnBack = $('#management-btn-back');
+
+  btnBack.style.display = mgmtStep > 0 ? 'flex' : 'none';
+  btnNext.textContent = 'Próximo';
+
+  if (mgmtFlow === 'ADD_PARTICIPANT') {
+    if (mgmtStep === 0) {
+      content.innerHTML = `
+        <div class="mgmt-form-group">
+          <label>Nome Completo</label>
+          <input type="text" id="mgmt-name" class="mgmt-input" placeholder="Ex: João Silva" value="${mgmtData.name}">
+        </div>
+        <div class="mgmt-form-group">
+          <label>Handle (@usuario)</label>
+          <input type="text" id="mgmt-handle" class="mgmt-input" placeholder="Ex: @joao" value="${mgmtData.handle}">
+        </div>
+      `;
+    } else if (mgmtStep <= MGMT_CATEGORIES.length) {
+      const cat = MGMT_CATEGORIES[mgmtStep - 1];
+      content.innerHTML = `
+        <div class="wizard-step-info">
+          <div class="wizard-step-icon">${cat.icon}</div>
+          <div class="wizard-step-title">${cat.title}</div>
+          <p style="font-size: 0.85rem; opacity: 0.7; margin-top: 4px;">Defina a meta da semana para esta categoria</p>
+        </div>
+        <div class="mgmt-form-group">
+          <textarea id="mgmt-objective" class="mgmt-input mgmt-area" placeholder="Ex: Treinar 3x na semana">${mgmtData.objectives[cat.key] || ''}</textarea>
+        </div>
+      `;
+      if (mgmtStep === MGMT_CATEGORIES.length) btnNext.textContent = 'Finalizar';
+    }
+  } else if (mgmtFlow === 'NEW_CYCLE') {
+    const participant = mgmtData.participants[mgmtData.currentIndex];
+    const cat = MGMT_CATEGORIES[mgmtData.currentCatIndex];
+
+    content.innerHTML = `
+      <div class="wizard-step-info">
+        <div class="modal-avatar" style="width: 60px; height: 60px; font-size: 20px; margin: 0 auto 12px;">${getInitials(participant.name)}</div>
+        <div class="item-name" style="font-size: 1.1rem; margin-bottom: 16px;">${participant.name}</div>
+        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px;">
+        <div class="wizard-step-icon">${cat.icon}</div>
+        <div class="wizard-step-title">${cat.title}</div>
+      </div>
+      <div class="mgmt-form-group">
+        <textarea id="mgmt-objective" class="mgmt-input mgmt-area" placeholder="Nova meta para ${cat.title}">${participant.objectives[cat.key] || ''}</textarea>
+      </div>
+    `;
+
+    const isLast = mgmtData.currentIndex === mgmtData.participants.length - 1 && mgmtData.currentCatIndex === MGMT_CATEGORIES.length - 1;
+    if (isLast) btnNext.textContent = 'Finalizar';
+  }
+}
+
+function handleMgmtBack() {
+  if (mgmtFlow === 'ADD_PARTICIPANT' && mgmtStep > 0) {
+    mgmtStep--;
+    renderManagementStep();
+  } else if (mgmtFlow === 'NEW_CYCLE') {
+    if (mgmtData.currentCatIndex > 0) {
+      mgmtData.currentCatIndex--;
+    } else if (mgmtData.currentIndex > 0) {
+      mgmtData.currentIndex--;
+      mgmtData.currentCatIndex = MGMT_CATEGORIES.length - 1;
+    }
+    mgmtStep--;
+    renderManagementStep();
+  }
+}
+
+async function handleMgmtNext() {
+  if (mgmtFlow === 'ADD_PARTICIPANT') {
+    if (mgmtStep === 0) {
+      mgmtData.name = $('#mgmt-name').value.trim();
+      mgmtData.handle = $('#mgmt-handle').value.trim();
+      if (!mgmtData.name || !mgmtData.handle) return alert('Preencha os campos obrigatórios');
+      mgmtStep++;
+      renderManagementStep();
+    } else if (mgmtStep <= MGMT_CATEGORIES.length) {
+      const cat = MGMT_CATEGORIES[mgmtStep - 1];
+      mgmtData.objectives[cat.key] = $('#mgmt-objective').value.trim();
+      
+      if (mgmtStep === MGMT_CATEGORIES.length) {
+        import('./data.js').then(m => {
+          m.addParticipant(mgmtData);
+          $('#management-modal').style.display = 'none';
+          refreshDashboard();
+        });
+      } else {
+        mgmtStep++;
+        renderManagementStep();
+      }
+    }
+  } else if (mgmtFlow === 'NEW_CYCLE') {
+    const participant = mgmtData.participants[mgmtData.currentIndex];
+    const cat = MGMT_CATEGORIES[mgmtData.currentCatIndex];
+    const objText = $('#mgmt-objective').value.trim();
+
+    participant.objectives[cat.key] = objText;
+
+    const isLastCat = mgmtData.currentCatIndex === MGMT_CATEGORIES.length - 1;
+    const isLastParticipant = mgmtData.currentIndex === mgmtData.participants.length - 1;
+
+    if (isLastCat && isLastParticipant) {
+      for (const p of mgmtData.participants) {
+        import('./data.js').then(m => m.updateParticipantObjectives(p.id, p.objectives));
+      }
+      $('#management-modal').style.display = 'none';
+      refreshDashboard();
+    } else {
+      if (isLastCat) {
+        mgmtData.currentIndex++;
+        mgmtData.currentCatIndex = 0;
+      } else {
+        mgmtData.currentCatIndex++;
+      }
+      mgmtStep++;
+      renderManagementStep();
+    }
+  }
 }
 
 async function handleResetScores() {
   const confirmed = window.confirm(
-    'Isso vai zerar a classificação atual do Best of The Week no dashboard e no Notion. Deseja continuar?',
+    'Isso vai zerar a classificação atual do Best of The Week no dashboard. Deseja continuar?',
   );
 
   if (!confirmed) return;
@@ -476,7 +591,7 @@ function showFinishScreen() {
   $('#modal-avatar').textContent = '✅';
   $('#modal-name').textContent = 'Todos os objetivos revisados';
   $('#modal-objective-label').textContent = 'Sincronização';
-  $('#modal-objective-text').textContent = 'Clique em finalizar para aplicar os pontos no ranking e no Notion.';
+  $('#modal-objective-text').textContent = 'Clique em finalizar para aplicar os pontos no ranking.';
   $('#modal-actions-voting').style.display = 'none';
   $('#modal-actions-speaker').style.display = 'none';
   $('#modal-actions-finish').style.display = 'flex';
@@ -487,7 +602,7 @@ async function finishVotingSystem() {
   const modalCloseButton = $('#modal-close-btn');
 
   finishButton.disabled = true;
-  finishButton.textContent = 'Sincronizando...';
+  finishButton.textContent = 'Salvando...';
   modalCloseButton.disabled = true;
 
   await persistVotingSession({

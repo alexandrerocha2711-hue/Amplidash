@@ -1,98 +1,34 @@
 /**
- * data.js — Notion-backed data layer (/melhores)
+ * data.js — Local-only state management (/melhores)
  */
 
 import { calculateTotalScores } from './utils.js';
-import { FALLBACK_PARTICIPANTS_DATA, cloneParticipants } from './shared.js';
+import { INITIAL_PARTICIPANTS_DATA, cloneParticipants } from './shared.js';
 
-const API_BASE = '/api/melhores';
-const PENDING_ACTIONS_STORAGE_KEY = 'melhores_pending_actions';
-const PENDING_STATE_STORAGE_KEY = 'melhores_pending_state';
-
-let participantState = withTotals(cloneParticipants(FALLBACK_PARTICIPANTS_DATA));
-let sourceInfo = {
-  source: 'fallback',
-  syncedAt: null,
-  error: null,
-};
+const STORAGE_KEY = 'amplify_melhores_v1';
 
 function isStorageAvailable() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
-function readStoredJson(key, fallbackValue) {
-  if (!isStorageAvailable()) return fallbackValue;
-
+function readStoredState() {
+  if (!isStorageAvailable()) return null;
   try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallbackValue;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch (error) {
-    return fallbackValue;
+    console.error('Error reading local storage:', error);
+    return null;
   }
 }
 
-function writeStoredJson(key, value) {
+function writeStoredState(state) {
   if (!isStorageAvailable()) return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-function removeStoredValue(key) {
-  if (!isStorageAvailable()) return;
-  window.localStorage.removeItem(key);
-}
-
-function readPendingActions() {
-  const actions = readStoredJson(PENDING_ACTIONS_STORAGE_KEY, []);
-  return Array.isArray(actions) ? actions : [];
-}
-
-function writePendingActions(actions) {
-  if (!actions.length) {
-    removeStoredValue(PENDING_ACTIONS_STORAGE_KEY);
-    return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error('Error writing local storage:', error);
   }
-
-  writeStoredJson(PENDING_ACTIONS_STORAGE_KEY, actions);
-}
-
-function savePendingSnapshot(errorMessage) {
-  writeStoredJson(PENDING_STATE_STORAGE_KEY, {
-    participants: participantState,
-    sourceInfo: {
-      source: 'pending',
-      syncedAt: null,
-      error: errorMessage,
-    },
-  });
-}
-
-function restorePendingSnapshot(errorMessage = null) {
-  const snapshot = readStoredJson(PENDING_STATE_STORAGE_KEY, null);
-
-  if (!snapshot?.participants) {
-    return false;
-  }
-
-  participantState = withTotals(snapshot.participants);
-  sourceInfo = {
-    source: 'pending',
-    syncedAt: snapshot?.sourceInfo?.syncedAt || null,
-    error: errorMessage || snapshot?.sourceInfo?.error || 'Existem alterações pendentes para enviar ao Notion.',
-  };
-
-  return true;
-}
-
-function clearPendingPersistence() {
-  removeStoredValue(PENDING_ACTIONS_STORAGE_KEY);
-  removeStoredValue(PENDING_STATE_STORAGE_KEY);
-}
-
-function queuePendingAction(action, errorMessage) {
-  const actions = readPendingActions();
-  actions.push(action);
-  writePendingActions(actions);
-  savePendingSnapshot(errorMessage);
 }
 
 function withTotals(participants) {
@@ -102,267 +38,136 @@ function withTotals(participants) {
   }));
 }
 
-function hydrateParticipants(participants) {
-  const fallbackById = new Map(FALLBACK_PARTICIPANTS_DATA.map((participant) => [participant.id, participant]));
+// Initial hydration: try storage, then fallback to INITIAL_PARTICIPANTS_DATA
+let participantState = readStoredState();
 
-  return withTotals(
-    participants.map((participant) => {
-      const fallback = fallbackById.get(participant.id);
-      return {
-        ...fallback,
-        ...participant,
-        categories: {
-          ...(fallback?.categories || {}),
-          ...(participant.categories || {}),
-        },
-        objectives: {
-          ...(fallback?.objectives || {}),
-          ...(participant.objectives || {}),
-        },
-        scoreBreakdown: {
-          ...(fallback?.scoreBreakdown || {}),
-          ...(participant.scoreBreakdown || {}),
-        },
-      };
-    }),
-  );
+if (!participantState) {
+  participantState = cloneParticipants(INITIAL_PARTICIPANTS_DATA);
 }
 
-async function requestJson(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    method: options.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
-
-  let payload = {};
-
-  try {
-    payload = await response.json();
-  } catch (error) {
-    payload = {};
-  }
-
-  if (!response.ok || payload.ok === false) {
-    throw new Error(payload.error || `Request failed with status ${response.status}`);
-  }
-
-  return payload;
-}
-
-async function flushPendingActions() {
-  const actions = readPendingActions();
-
-  if (!actions.length) {
-    return null;
-  }
-
-  let lastPayload = null;
-  let processedCount = 0;
-
-  for (const action of actions) {
-    try {
-      if (action.type === 'apply') {
-        lastPayload = await requestJson('/apply', {
-          method: 'POST',
-          body: action.payload || {},
-        });
-      } else if (action.type === 'reset') {
-        lastPayload = await requestJson('/reset', {
-          method: 'POST',
-        });
-      }
-
-      processedCount += 1;
-    } catch (error) {
-      const remainingActions = actions.slice(processedCount);
-      writePendingActions(remainingActions);
-      throw error;
-    }
-  }
-
-  clearPendingPersistence();
-  return lastPayload;
-}
-
-function applyVotingLocally(sessionResults, bestWinnerId, worstWinnerId) {
-  participantState = withTotals(
-    participantState.map((participant) => {
-      const result = sessionResults[participant.id] || {};
-      const scoreBreakdown = {
-        ...participant.scoreBreakdown,
-      };
-
-      const categories = {
-        ...participant.categories,
-        exercicio: participant.categories.exercicio + Number(result.exercicio || 0),
-        familia: participant.categories.familia + Number(result.familia || 0),
-        alimentacao: participant.categories.alimentacao + Number(result.alimentacao || 0),
-        hobbies: participant.categories.hobbies + Number(result.hobbies || 0),
-        conhecimentos: participant.categories.conhecimentos + Number(result.conhecimentos || 0),
-        bestWeek: participant.categories.bestWeek,
-      };
-
-      if (participant.id === bestWinnerId) {
-        scoreBreakdown.melhorFato = Number(scoreBreakdown.melhorFato || 0) + 1;
-      }
-
-      if (participant.id === worstWinnerId) {
-        scoreBreakdown.piorFato = Number(scoreBreakdown.piorFato || 0) - 1;
-      }
-
-      categories.bestWeek = Number(scoreBreakdown.melhorFato || 0) + Number(scoreBreakdown.piorFato || 0);
-
-      return {
-        ...participant,
-        categories,
-        scoreBreakdown,
-      };
-    }),
-  );
-}
-
-function resetScoresLocally() {
-  participantState = withTotals(
-    participantState.map((participant) => ({
-      ...participant,
-      categories: {
-        exercicio: 0,
-        familia: 0,
-        alimentacao: 0,
-        hobbies: 0,
-        conhecimentos: 0,
-        bestWeek: 0,
-      },
-      scoreBreakdown: {
-        melhorFato: 0,
-        piorFato: 0,
-      },
-    })),
-  );
-}
+participantState = withTotals(participantState);
 
 export function getParticipantsData() {
   return participantState;
 }
 
 export function getSourceInfo() {
-  return sourceInfo;
+  return {
+    source: 'local',
+    syncedAt: new Date().toISOString(),
+    error: null,
+  };
 }
 
 export async function loadParticipantsData() {
-  try {
-    const pendingPayload = await flushPendingActions();
-    const payload = pendingPayload || await requestJson('/state');
-    participantState = hydrateParticipants(payload.participants || []);
-    sourceInfo = {
-      source: payload.source || 'notion',
-      syncedAt: payload.syncedAt || new Date().toISOString(),
-      error: null,
-    };
-
-    clearPendingPersistence();
-  } catch (error) {
-    if (restorePendingSnapshot(error.message)) {
-      return {
-        participants: participantState,
-        sourceInfo,
-      };
-    }
-
-    participantState = withTotals(cloneParticipants(FALLBACK_PARTICIPANTS_DATA));
-    sourceInfo = {
-      source: 'fallback',
-      syncedAt: null,
-      error: error.message,
-    };
-  }
-
+  // Always returns the current in-memory state
   return {
     participants: participantState,
-    sourceInfo,
+    sourceInfo: getSourceInfo(),
   };
 }
 
-export async function persistVotingSession({ sessionResults, bestWinnerId, worstWinnerId, voteDate }) {
-  try {
-    const payload = await requestJson('/apply', {
-      method: 'POST',
-      body: {
-        sessionResults,
-        bestWinnerId,
-        worstWinnerId,
-        voteDate,
-      },
-    });
+export async function persistVotingSession({ sessionResults, bestWinnerId, worstWinnerId }) {
+  participantState = participantState.map((participant) => {
+    const result = sessionResults[participant.id] || {};
+    const scoreBreakdown = { ...participant.scoreBreakdown };
 
-    participantState = hydrateParticipants(payload.participants || []);
-    sourceInfo = {
-      source: payload.source || 'notion',
-      syncedAt: payload.syncedAt || new Date().toISOString(),
-      error: null,
+    const categories = {
+      ...participant.categories,
+      exercicio: participant.categories.exercicio + Number(result.exercicio || 0),
+      familia: participant.categories.familia + Number(result.familia || 0),
+      alimentacao: participant.categories.alimentacao + Number(result.alimentacao || 0),
+      hobbies: participant.categories.hobbies + Number(result.hobbies || 0),
+      conhecimentos: participant.categories.conhecimentos + Number(result.conhecimentos || 0),
     };
 
-    clearPendingPersistence();
-  } catch (error) {
-    applyVotingLocally(sessionResults, bestWinnerId, worstWinnerId);
-    queuePendingAction(
-      {
-        type: 'apply',
-        payload: {
-          sessionResults,
-          bestWinnerId,
-          worstWinnerId,
-          voteDate,
-        },
-      },
-      error.message,
-    );
-    sourceInfo = {
-      ...sourceInfo,
-      source: 'pending',
-      syncedAt: null,
-      error: error.message,
+    if (participant.id === bestWinnerId) {
+      scoreBreakdown.melhorFato = (scoreBreakdown.melhorFato || 0) + 1;
+    }
+
+    if (participant.id === worstWinnerId) {
+      scoreBreakdown.piorFato = (scoreBreakdown.piorFato || 0) - 1;
+    }
+
+    // bestWeek category is the sum of MF and PF
+    categories.bestWeek = (scoreBreakdown.melhorFato || 0) + (scoreBreakdown.piorFato || 0);
+
+    return {
+      ...participant,
+      categories,
+      scoreBreakdown,
     };
-  }
+  });
+
+  participantState = withTotals(participantState);
+  writeStoredState(participantState);
 
   return {
     participants: participantState,
-    sourceInfo,
+    sourceInfo: getSourceInfo(),
   };
+}
+
+export function addParticipant({ name, handle, objectives }) {
+  const id = name.toLowerCase().replace(/\s+/g, '-');
+  const newParticipant = {
+    id,
+    name,
+    handle: handle.startsWith('@') ? handle : `@${handle}`,
+    categories: {
+      exercicio: 0,
+      familia: 0,
+      alimentacao: 0,
+      hobbies: 0,
+      conhecimentos: 0,
+      bestWeek: 0,
+    },
+    objectives: {
+      exercicio: objectives.exercicio || '',
+      familia: objectives.familia || '',
+      alimentacao: objectives.alimentacao || '',
+      hobbies: objectives.hobbies || '',
+      conhecimentos: objectives.conhecimentos || '',
+    },
+    scoreBreakdown: {
+      melhorFato: 0,
+      piorFato: 0,
+    },
+  };
+
+  participantState.push(withTotals([newParticipant])[0]);
+  writeStoredState(participantState);
+  return participantState;
+}
+
+export function updateParticipantObjectives(id, objectives) {
+  participantState = participantState.map((p) => {
+    if (p.id !== id) return p;
+    return {
+      ...p,
+      objectives: {
+        ...p.objectives,
+        ...objectives,
+      },
+    };
+  });
+  writeStoredState(participantState);
+  return participantState;
 }
 
 export async function resetAllScores() {
-  try {
-    const payload = await requestJson('/reset', {
-      method: 'POST',
-    });
+  participantState = INITIAL_PARTICIPANTS_DATA.map(p => ({
+    ...cloneParticipants([p])[0],
+    categories: { ...p.categories },
+    scoreBreakdown: { ...p.scoreBreakdown }
+  }));
 
-    participantState = hydrateParticipants(payload.participants || []);
-    sourceInfo = {
-      source: payload.source || 'notion',
-      syncedAt: payload.syncedAt || new Date().toISOString(),
-      error: null,
-    };
-
-    clearPendingPersistence();
-  } catch (error) {
-    resetScoresLocally();
-    queuePendingAction({ type: 'reset' }, error.message);
-    sourceInfo = {
-      ...sourceInfo,
-      source: 'pending',
-      syncedAt: null,
-      error: error.message,
-    };
-  }
+  participantState = withTotals(participantState);
+  writeStoredState(participantState);
 
   return {
     participants: participantState,
-    sourceInfo,
+    sourceInfo: getSourceInfo(),
   };
 }
 

@@ -1,9 +1,3 @@
-import {
-  loadMelhoresStateFromNotion,
-  applyVotingSessionToNotion,
-  resetMelhoresScoresOnNotion,
-} from './melhores-sync.js';
-
 function withCorsHeaders(payload, status = 200) {
   return {
     status,
@@ -18,47 +12,14 @@ function withCorsHeaders(payload, status = 200) {
   };
 }
 
-function handleError(error) {
-  console.error('[melhores-api]', error);
-
-  return withCorsHeaders(
-    {
-      ok: false,
-      error: error.message || 'Unexpected error while syncing with Notion.',
-    },
-    500,
-  );
-}
-
 export async function handleMelhoresStateRequest() {
-  try {
-    const payload = await loadMelhoresStateFromNotion();
-    return withCorsHeaders({ ok: true, ...payload });
-  } catch (error) {
-    return handleError(error);
-  }
+  return withCorsHeaders({ ok: true, participants: [], source: 'offline' });
 }
 
 export async function handleMelhoresApplyRequest(body = {}) {
-  try {
-    const payload = await applyVotingSessionToNotion({
-      sessionResults: body.sessionResults || {},
-      bestWinnerId: body.bestWinnerId || null,
-      worstWinnerId: body.worstWinnerId || null,
-      voteDate: body.voteDate || null,
-    });
-
-    return withCorsHeaders({ ok: true, ...payload });
-  } catch (error) {
-    return handleError(error);
-  }
+  return withCorsHeaders({ ok: true, source: 'offline' });
 }
 
 export async function handleMelhoresResetRequest() {
-  try {
-    const payload = await resetMelhoresScoresOnNotion();
-    return withCorsHeaders({ ok: true, ...payload });
-  } catch (error) {
-    return handleError(error);
-  }
+  return withCorsHeaders({ ok: true, source: 'offline' });
 }
