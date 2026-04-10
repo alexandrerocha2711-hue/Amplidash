@@ -2016,3 +2016,412 @@ function formatMonthLabel(dateKey) {
 function getIsoDateKey(dateTime) {
   return dateTime.slice(0, 10);
 }
+
+// ============================================================
+// TIKTOK SHOP ANALYTICS — MOCK DATA MODULE
+// ============================================================
+
+const TIKTOK_BRANDS = [
+  { id: 'brand-glow', name: 'Glow Skin', color: '#ff6b9d' },
+  { id: 'brand-venus', name: 'Venus Hair', color: '#7ed7ff' },
+  { id: 'brand-lumi', name: 'Lumi Beauty', color: '#89f0c6' },
+  { id: 'brand-aura', name: 'Aura Cosmetics', color: '#ffcf5a' },
+];
+
+const TIKTOK_CAMPAIGNS = [
+  { id: 'camp-verao', name: 'Verão 2026', status: 'Ativa', startDate: addDays(TODAY_KEY, -28), endDate: addDays(TODAY_KEY, 14) },
+  { id: 'camp-maes', name: 'Dia das Mães', status: 'Ativa', startDate: addDays(TODAY_KEY, -14), endDate: addDays(TODAY_KEY, 21) },
+  { id: 'camp-always', name: 'Always On', status: 'Ativa', startDate: addDays(TODAY_KEY, -60), endDate: addDays(TODAY_KEY, 60) },
+];
+
+const TIKTOK_PRODUCTS = [
+  { id: 'prod-serum', name: 'Sérum Vitamina C', brandId: 'brand-glow', campaignId: 'camp-verao', price: 89.90, refundRate: 0.032 },
+  { id: 'prod-mascara', name: 'Máscara Capilar Repair', brandId: 'brand-venus', campaignId: 'camp-always', price: 54.90, refundRate: 0.018 },
+  { id: 'prod-palette', name: 'Paleta de Sombras Sunset', brandId: 'brand-lumi', campaignId: 'camp-maes', price: 129.90, refundRate: 0.042 },
+  { id: 'prod-lip', name: 'Lip Oil Hidratante', brandId: 'brand-aura', campaignId: 'camp-verao', price: 39.90, refundRate: 0.012 },
+  { id: 'prod-shampoo', name: 'Shampoo Reconstrutor', brandId: 'brand-venus', campaignId: 'camp-always', price: 45.90, refundRate: 0.022 },
+  { id: 'prod-primer', name: 'Primer Glow Glass', brandId: 'brand-glow', campaignId: 'camp-maes', price: 69.90, refundRate: 0.028 },
+  { id: 'prod-blush', name: 'Blush Líquido Natural', brandId: 'brand-lumi', campaignId: 'camp-verao', price: 49.90, refundRate: 0.015 },
+  { id: 'prod-leave', name: 'Leave-in Protetor Térmico', brandId: 'brand-venus', campaignId: 'camp-maes', price: 62.90, refundRate: 0.025 },
+];
+
+const CONTENT_TYPES = ['UGC', 'Review', 'Tutorial', 'Unboxing', 'Trend'];
+const HOOK_TYPES = ['Prova Social', 'Curiosidade', 'Dor/Problema', 'Antes/Depois', 'Oferta Direta'];
+
+function generateTikTokVideos() {
+  const videos = [];
+  const titles = [
+    'Testei esse sérum por 7 dias e olha o resultado',
+    'POV: Você descobriu o melhor produto do TikTok',
+    'Review honesto: vale a pena mesmo?',
+    'Unboxing + primeiras impressões',
+    'Rotina completa usando só esses produtos',
+    'Top 3 produtos que mais vendi esse mês',
+    'Comprei os mais vendidos da TikTok Shop',
+    'Esse produto mudou minha rotina de skincare',
+    'Trend: mostrando meu setup de gravação',
+    'Guia completo: como escolher o produto certo',
+    'Antes e depois usando por 15 dias',
+    'Comparando o original vs o genérico',
+    'O combo perfeito para presentear no Dia das Mães',
+    'Como aplico step by step para máximo resultado',
+    'Respondendo as perguntas mais feitas sobre este produto',
+    'O segredo que ninguém te conta sobre esse produto',
+    'Minha opinião sincera depois de 30 dias de uso',
+    'Como esse produto virou meu best seller',
+    'Tutorial rápido de 60 segundos',
+    'Esse vídeo viralizou e entenda o porquê',
+    'Provando que esse produto funciona ao vivo',
+    'A verdade sobre esse hype todo',
+    'Combo que não pode faltar na sua nécessaire',
+    'Challenge: usando 24 horas sem retocar',
+  ];
+
+  for (let i = 0; i < 24; i++) {
+    const product = TIKTOK_PRODUCTS[i % TIKTOK_PRODUCTS.length];
+    const brand = TIKTOK_BRANDS.find(b => b.id === product.brandId);
+    const campaign = TIKTOK_CAMPAIGNS.find(c => c.id === product.campaignId);
+    const contentType = CONTENT_TYPES[i % CONTENT_TYPES.length];
+    const hookType = HOOK_TYPES[i % HOOK_TYPES.length];
+    const daysAgo = Math.floor(i * 1.3) + 1;
+    const publishDate = addDays(TODAY_KEY, -daysAgo);
+
+    // Different performance scenarios
+    let views, ctr, cvr, watchTime, retention3s, retention5s;
+    if (i === 0) {
+      // Viral but low conversion
+      views = 485000 + Math.floor(Math.random() * 50000);
+      ctr = 0.018;
+      cvr = 0.004;
+      watchTime = 8.2;
+      retention3s = 0.78;
+      retention5s = 0.52;
+    } else if (i === 3) {
+      // Low views but high conversion
+      views = 3200 + Math.floor(Math.random() * 800);
+      ctr = 0.092;
+      cvr = 0.068;
+      watchTime = 22.4;
+      retention3s = 0.91;
+      retention5s = 0.74;
+    } else if (i === 1) {
+      // Best seller product
+      views = 142000 + Math.floor(Math.random() * 15000);
+      ctr = 0.054;
+      cvr = 0.038;
+      watchTime = 14.6;
+      retention3s = 0.82;
+      retention5s = 0.61;
+    } else {
+      // Normal distribution
+      const base = 8000 + Math.floor(Math.random() * 72000);
+      views = base + (i % 3 === 0 ? base * 0.5 : 0);
+      ctr = 0.025 + (Math.random() * 0.045);
+      cvr = 0.008 + (Math.random() * 0.042);
+      watchTime = 6 + Math.random() * 18;
+      retention3s = 0.45 + Math.random() * 0.45;
+      retention5s = Math.max(0.2, retention3s - 0.15 - Math.random() * 0.15);
+    }
+
+    const clicks = Math.round(views * ctr);
+    const purchases = Math.round(clicks * cvr);
+    const revenue = round2(purchases * product.price);
+    const rpm = views > 0 ? round2((revenue / views) * 1000) : 0;
+
+    videos.push({
+      id: `vid-${i + 1}`,
+      title: titles[i % titles.length],
+      productId: product.id,
+      productName: product.name,
+      brandId: brand.id,
+      brandName: brand.name,
+      brandColor: brand.color,
+      campaignId: campaign.id,
+      campaignName: campaign.name,
+      contentType,
+      hookType,
+      publishDate,
+      views,
+      clicks,
+      purchases,
+      revenue,
+      ctr: round2(ctr * 100),
+      cvr: round2(cvr * 100),
+      rpm,
+      watchTime: round2(watchTime),
+      retention3s: round2(retention3s * 100),
+      retention5s: round2(retention5s * 100),
+      refundRate: round2(product.refundRate * 100),
+      score: calculateVideoScore(rpm, cvr * 100, retention3s * 100),
+    });
+  }
+
+  return videos;
+}
+
+function calculateVideoScore(rpm, cvr, hookRate) {
+  const rpmScore = Math.min(rpm / 5, 100) * 0.4;
+  const cvrScore = Math.min(cvr / 5, 100) * 0.35;
+  const hookScore = Math.min(hookRate / 0.9, 100) * 0.25;
+  return Math.round(rpmScore + cvrScore + hookScore);
+}
+
+const TIKTOK_VIDEOS = generateTikTokVideos();
+
+function generateDailyRevenue() {
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const dateKey = addDays(TODAY_KEY, -i);
+    const weekday = parseDateKey(dateKey).getDay();
+    const weekdayFactor = WEEKDAY_MULTIPLIERS[weekday];
+    const baseRevenue = 2800 + Math.random() * 4200;
+    const baseGMV = baseRevenue * (1.15 + Math.random() * 0.25);
+    const basePedidos = Math.round(baseRevenue / (65 + Math.random() * 35));
+    const baseViews = Math.round(18000 + Math.random() * 42000);
+    const baseClicks = Math.round(baseViews * (0.028 + Math.random() * 0.022));
+
+    days.push({
+      date: dateKey,
+      label: formatDateLabel(dateKey),
+      revenue: round2(baseRevenue * weekdayFactor),
+      gmv: round2(baseGMV * weekdayFactor),
+      pedidos: Math.round(basePedidos * weekdayFactor),
+      views: Math.round(baseViews * weekdayFactor),
+      clicks: Math.round(baseClicks * weekdayFactor),
+      purchases: Math.round(basePedidos * weekdayFactor * 0.88),
+    });
+  }
+  return days;
+}
+
+const TIKTOK_DAILY = generateDailyRevenue();
+
+function generateHeatmapData() {
+  const heatmap = [];
+  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  for (let day = 0; day < 7; day++) {
+    for (let hour = 6; hour <= 23; hour++) {
+      const isPeak = (hour >= 19 && hour <= 22) || (hour >= 12 && hour <= 14);
+      const isWeekend = day === 0 || day === 6;
+      const base = isPeak ? 180 : 40;
+      const boost = isWeekend && isPeak ? 1.4 : 1;
+      heatmap.push({
+        day: dayNames[day],
+        dayIndex: day,
+        hour,
+        hourLabel: `${String(hour).padStart(2, '0')}:00`,
+        value: Math.round((base + Math.random() * base * 0.6) * boost),
+      });
+    }
+  }
+  return heatmap;
+}
+
+const TIKTOK_HEATMAP = generateHeatmapData();
+
+export function getTikTokShopSnapshot(filters = {}) {
+  const period = filters.period || 'last_7_days';
+  const brandFilter = filters.brand || 'all';
+  const productFilter = filters.product || 'all';
+  const campaignFilter = filters.campaign || 'all';
+  const contentTypeFilter = filters.contentType || 'all';
+
+  let filteredVideos = [...TIKTOK_VIDEOS];
+  if (brandFilter !== 'all') filteredVideos = filteredVideos.filter(v => v.brandId === brandFilter);
+  if (productFilter !== 'all') filteredVideos = filteredVideos.filter(v => v.productId === productFilter);
+  if (campaignFilter !== 'all') filteredVideos = filteredVideos.filter(v => v.campaignId === campaignFilter);
+  if (contentTypeFilter !== 'all') filteredVideos = filteredVideos.filter(v => v.contentType === contentTypeFilter);
+
+  const periodDays = period === 'last_7_days' ? 7 : period === 'last_14_days' ? 14 : 30;
+  const cutoffDate = addDays(TODAY_KEY, -(periodDays - 1));
+  filteredVideos = filteredVideos.filter(v => v.publishDate >= cutoffDate);
+
+  // Daily data for charts
+  const dailyData = TIKTOK_DAILY.slice(-periodDays);
+  const prevDailyData = TIKTOK_DAILY.slice(-(periodDays * 2), -periodDays);
+
+  // Aggregate KPIs
+  const totalRevenue = dailyData.reduce((s, d) => s + d.revenue, 0);
+  const totalGMV = dailyData.reduce((s, d) => s + d.gmv, 0);
+  const totalPedidos = dailyData.reduce((s, d) => s + d.pedidos, 0);
+  const totalViews = dailyData.reduce((s, d) => s + d.views, 0);
+  const totalClicks = dailyData.reduce((s, d) => s + d.clicks, 0);
+  const totalPurchases = dailyData.reduce((s, d) => s + d.purchases, 0);
+
+  const prevRevenue = prevDailyData.reduce((s, d) => s + d.revenue, 0);
+  const prevGMV = prevDailyData.reduce((s, d) => s + d.gmv, 0);
+  const prevPedidos = prevDailyData.reduce((s, d) => s + d.pedidos, 0);
+
+  const aov = totalPedidos > 0 ? totalRevenue / totalPedidos : 0;
+  const cvr = totalClicks > 0 ? (totalPurchases / totalClicks) * 100 : 0;
+  const rpm = totalViews > 0 ? (totalRevenue / totalViews) * 1000 : 0;
+
+  // Product aggregation
+  const productMap = new Map();
+  filteredVideos.forEach(v => {
+    const current = productMap.get(v.productId) || {
+      id: v.productId, name: v.productName, brandName: v.brandName, brandColor: v.brandColor,
+      campaignName: v.campaignName, views: 0, clicks: 0, purchases: 0, revenue: 0, refundRate: v.refundRate,
+    };
+    current.views += v.views;
+    current.clicks += v.clicks;
+    current.purchases += v.purchases;
+    current.revenue += v.revenue;
+    productMap.set(v.productId, current);
+  });
+
+  const productRows = Array.from(productMap.values()).map(p => ({
+    ...p,
+    revenue: round2(p.revenue),
+    ctr: p.views > 0 ? round2((p.clicks / p.views) * 100) : 0,
+    cvr: p.clicks > 0 ? round2((p.purchases / p.clicks) * 100) : 0,
+    rpm: p.views > 0 ? round2((p.revenue / p.views) * 1000) : 0,
+  }));
+
+  // Brand aggregation for chart
+  const brandMap = new Map();
+  productRows.forEach(p => {
+    const current = brandMap.get(p.brandName) || { name: p.brandName, color: p.brandColor, revenue: 0 };
+    current.revenue += p.revenue;
+    brandMap.set(p.brandName, current);
+  });
+  const brandRevenue = Array.from(brandMap.values()).sort((a, b) => b.revenue - a.revenue);
+
+  // Funnel
+  const funnel = [
+    { label: 'Views', value: totalViews },
+    { label: 'Cliques', value: totalClicks },
+    { label: 'Compras', value: totalPurchases },
+  ];
+
+  // Top products
+  const topProducts = [...productRows].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+  // Insights
+  const insights = generateInsights(filteredVideos, productRows, brandRevenue);
+
+  return {
+    kpis: {
+      revenue: { value: round2(totalRevenue), delta: calcDelta(totalRevenue, prevRevenue) },
+      gmv: { value: round2(totalGMV), delta: calcDelta(totalGMV, prevGMV) },
+      pedidos: { value: totalPedidos, delta: calcDelta(totalPedidos, prevPedidos) },
+      aov: { value: round2(aov), delta: null },
+      cvr: { value: round2(cvr), delta: null },
+      rpm: { value: round2(rpm), delta: null },
+    },
+    dailyData,
+    funnel,
+    brandRevenue,
+    topProducts,
+    productRows: productRows.sort((a, b) => b.revenue - a.revenue),
+    videos: filteredVideos.sort((a, b) => b.revenue - a.revenue),
+    insights,
+    heatmap: TIKTOK_HEATMAP,
+    brands: TIKTOK_BRANDS,
+    campaigns: TIKTOK_CAMPAIGNS,
+    products: TIKTOK_PRODUCTS,
+    contentTypes: CONTENT_TYPES,
+  };
+}
+
+function calcDelta(current, previous) {
+  if (!previous || previous === 0) return null;
+  return round2(((current - previous) / Math.abs(previous)) * 100);
+}
+
+function generateInsights(videos, products, brands) {
+  const insights = [];
+
+  // Hook type with best conversion
+  const hookPerf = {};
+  videos.forEach(v => {
+    if (!hookPerf[v.hookType]) hookPerf[v.hookType] = { count: 0, totalCVR: 0 };
+    hookPerf[v.hookType].count++;
+    hookPerf[v.hookType].totalCVR += v.cvr;
+  });
+  const bestHook = Object.entries(hookPerf)
+    .map(([hook, data]) => ({ hook, avgCVR: data.totalCVR / data.count }))
+    .sort((a, b) => b.avgCVR - a.avgCVR)[0];
+  if (bestHook) {
+    insights.push({
+      type: 'positive',
+      icon: '🎯',
+      title: `Conteúdos com hook "${bestHook.hook}" têm maior conversão`,
+      detail: `CVR médio de ${bestHook.avgCVR.toFixed(1).replace('.', ',')}% — ${round2(bestHook.avgCVR / (videos.reduce((s,v)=>s+v.cvr,0) / videos.length) * 100 - 100).toFixed(0)}% acima da média.`,
+    });
+  }
+
+  // Best RPM product
+  const bestRPMProduct = [...products].sort((a, b) => b.rpm - a.rpm)[0];
+  if (bestRPMProduct) {
+    const shortVideos = videos.filter(v => v.productId === bestRPMProduct.id && v.watchTime < 15);
+    insights.push({
+      type: 'positive',
+      icon: '💰',
+      title: `${bestRPMProduct.name} tem maior RPM${shortVideos.length > 0 ? ' com vídeos curtos' : ''}`,
+      detail: `RPM de R$ ${bestRPMProduct.rpm.toFixed(2).replace('.', ',')} — ${shortVideos.length} vídeo(s) curtos entre os melhores.`,
+    });
+  }
+
+  // High views low conversion
+  const viral = videos.filter(v => v.views > 50000 && v.cvr < 1);
+  if (viral.length > 0) {
+    insights.push({
+      type: 'warning',
+      icon: '⚠️',
+      title: `${viral.length} vídeo(s) com alto alcance mas baixa conversão`,
+      detail: `Vídeos com mais de 50K views e CVR abaixo de 1% — considerar ajustar CTA e link.`,
+    });
+  }
+
+  // Low views high conversion
+  const hidden = videos.filter(v => v.views < 10000 && v.cvr > 4);
+  if (hidden.length > 0) {
+    insights.push({
+      type: 'positive',
+      icon: '🔍',
+      title: `${hidden.length} vídeo(s) com potencial escondido`,
+      detail: `CVR forte acima de 4% mas com poucos views — escalar com Spark Ads ou repost.`,
+    });
+  }
+
+  // CVR drop alert
+  const recentVideos = videos.filter(v => v.publishDate >= addDays(TODAY_KEY, -7));
+  const olderVideos = videos.filter(v => v.publishDate < addDays(TODAY_KEY, -7));
+  if (recentVideos.length > 0 && olderVideos.length > 0) {
+    const recentAvgCVR = recentVideos.reduce((s, v) => s + v.cvr, 0) / recentVideos.length;
+    const olderAvgCVR = olderVideos.reduce((s, v) => s + v.cvr, 0) / olderVideos.length;
+    if (recentAvgCVR < olderAvgCVR * 0.85) {
+      insights.push({
+        type: 'danger',
+        icon: '🔴',
+        title: 'CVR em queda nos últimos 7 dias',
+        detail: `CVR caiu de ${olderAvgCVR.toFixed(1).replace('.', ',')}% para ${recentAvgCVR.toFixed(1).replace('.', ',')}% — revisar abordagem e copy.`,
+      });
+    }
+  }
+
+  // High refund rate
+  const highRefund = products.filter(p => p.refundRate > 3);
+  if (highRefund.length > 0) {
+    insights.push({
+      type: 'warning',
+      icon: '📦',
+      title: `${highRefund.length} produto(s) com taxa de devolução acima de 3%`,
+      detail: `${highRefund.map(p => p.name).join(', ')} — verificar expectativa vs realidade no conteúdo.`,
+    });
+  }
+
+  // Brand champion
+  if (brands.length > 1) {
+    const champion = brands[0];
+    insights.push({
+      type: 'positive',
+      icon: '🏆',
+      title: `${champion.name} é a marca campeã em receita`,
+      detail: `R$ ${champion.revenue.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} em receita no período.`,
+    });
+  }
+
+  return insights;
+}

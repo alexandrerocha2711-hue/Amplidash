@@ -32,6 +32,11 @@
         </div>
       </div>
 
+      <div class="sidebar-user">
+        <img src="/images/mari-gil-profile.jpg" alt="Mari Gil" class="sidebar-user-avatar" />
+        <span class="sidebar-user-name">Mari Gil</span>
+      </div>
+
       <nav class="sidebar-nav" aria-label="Navegação principal">
         <a class="nav-link is-active" href="#overview">Dashboard</a>
         <a class="nav-link" href="#goals">Metas</a>
@@ -64,198 +69,278 @@
 
       <main class="main-content">
         <div class="page-view" data-view="overview">
+
+      <!-- TIKTOK SHOP FILTERS -->
       <section class="control-bar panel" aria-label="Filtros globais do dashboard">
-        <div class="control-grid">
-          <label class="field-inline field-inline--period">
+        <div class="tt-filter-bar">
+          <label class="field-inline">
             <span>Período</span>
-            <select id="date-preset-select"></select>
+            <select id="tt-period-select">
+              <option value="last_7_days">Últimos 7 dias</option>
+              <option value="last_14_days">Últimos 14 dias</option>
+              <option value="last_30_days">Últimos 30 dias</option>
+            </select>
           </label>
-
-          <div class="custom-range-fields control-group--dates" id="custom-range-fields" hidden>
-            <label class="field-inline">
-              <span>Início</span>
-              <input id="custom-range-start" type="date" />
-            </label>
-
-            <label class="field-inline">
-              <span>Fim</span>
-              <input id="custom-range-end" type="date" />
-            </label>
-          </div>
-
-          <label class="field-inline field-inline--attribution">
-            <span>Atribuição</span>
-            <select id="attribution-select"></select>
+          <label class="field-inline">
+            <span>Marca</span>
+            <select id="tt-brand-select">
+              <option value="all">Todas as marcas</option>
+            </select>
           </label>
-
-          <label class="field-inline field-inline--comparison">
-            <span>Comparação</span>
-            <select id="comparison-select"></select>
+          <label class="field-inline">
+            <span>Produto</span>
+            <select id="tt-product-select">
+              <option value="all">Todos os produtos</option>
+            </select>
           </label>
-        </div>
-
-        <div class="control-meta">
-          <div>
-            <p class="control-meta-label">Período ativo</p>
-            <strong class="control-meta-value" id="active-period-label">Carregando...</strong>
-            <p class="control-meta-copy" id="active-period-copy">Preparando análise do dashboard.</p>
-          </div>
-
-          <div class="control-status" id="control-status">
-            <span class="status-dot"></span>
-            <span id="loading-status-text">Dados prontos para análise</span>
-          </div>
+          <label class="field-inline">
+            <span>Campanha</span>
+            <select id="tt-campaign-select">
+              <option value="all">Todas as campanhas</option>
+            </select>
+          </label>
+          <label class="field-inline">
+            <span>Tipo de conteúdo</span>
+            <select id="tt-content-type-select">
+              <option value="all">Todos os tipos</option>
+            </select>
+          </label>
         </div>
       </section>
-        <section class="hero-grid" id="overview" data-section="overview">
-          <article class="panel hero-panel">
-            <div class="hero-identity">
-              <img class="creator-avatar" id="creator-avatar-image" src="" alt="Foto da creator" />
-              <div class="hero-identity-copy">
-                <span class="hero-chip" id="hero-period-pill">Período</span>
-                <h3 class="hero-title" id="hero-name">Creator</h3>
-              </div>
-            </div>
 
-            <div class="hero-meta">
-              <div class="meta-card">
-                <span class="meta-label">Handle</span>
-                <strong class="meta-value" id="hero-handle">@creator</strong>
-              </div>
-              <div class="meta-card">
-                <span class="meta-label">Nicho</span>
-                <strong class="meta-value" id="hero-segment">Lifestyle</strong>
-              </div>
-              <div class="meta-card">
-                <span class="meta-label">Cidade</span>
-                <strong class="meta-value" id="hero-city">São Paulo, SP</strong>
-              </div>
-              <div class="meta-card">
-                <span class="meta-label">Foco atual</span>
-                <strong class="meta-value" id="hero-focus">Live commerce</strong>
-              </div>
-            </div>
+      <!-- SUB-TAB NAVIGATION -->
+      <nav class="tt-subtabs" aria-label="Sub-navegação do dashboard">
+        <button class="tt-subtab is-active" data-subtab="tt-overview" type="button">Overview</button>
+        <button class="tt-subtab" data-subtab="tt-products" type="button">Produtos</button>
+        <button class="tt-subtab" data-subtab="tt-content" type="button">Conteúdos</button>
+        <button class="tt-subtab" data-subtab="tt-insights" type="button">Insights</button>
+      </nav>
 
-            <div class="hero-actions">
-              <button class="button button-ghost" type="button" data-scroll-target="#profile">Atualizar cadastro</button>
-              <button class="button button-ghost" type="button" data-open-modal="anonymous-report">Denúncia anônima</button>
-            </div>
-          </article>
+      <!-- SUB-TAB 1: OVERVIEW -->
+      <div class="tt-subpage" data-subpage="tt-overview">
+        <div class="tt-kpi-grid" id="tt-kpi-grid"></div>
 
-          <article class="panel manager-panel">
-            <div class="manager-header">
-              <div class="manager-avatar" id="manager-avatar">AM</div>
-              <div>
-                <p class="manager-label">Seu Account Manager</p>
-                <h3 class="manager-name" id="manager-name">Bianca Mendes</h3>
-                <p class="manager-role" id="manager-role">Account Manager</p>
-              </div>
-            </div>
-
-            <div class="manager-details">
-              <div class="detail-item">
-                <span class="detail-label">Cobertura</span>
-                <strong class="detail-value" id="manager-coverage">Beauty, Retail e Live Commerce</strong>
-              </div>
-              <div class="detail-item">
-                <span class="detail-label">Próximo check-in</span>
-                <strong class="detail-value" id="manager-meeting">15/04 às 16:30</strong>
-              </div>
-            </div>
-
-            <div class="manager-actions">
-              <a class="button button-secondary" id="manager-email" href="#">E-mail</a>
-              <a class="button button-secondary" id="manager-whatsapp" href="#" target="_blank" rel="noreferrer">WhatsApp</a>
-            </div>
-          </article>
-        </section>
-
-        <section class="section" data-section="overview">
-          <div class="section-header">
-            <div>
-              <p class="section-kicker">Dashboard de resultados</p>
-              <h3 class="section-title">Resultados</h3>
-            </div>
-            <span class="section-badge" id="granularity-badge">Granularidade diária</span>
-          </div>
-
-          <div class="metric-grid" id="metric-grid"></div>
-
-          <div class="dashboard-grid">
-            <article class="panel chart-panel chart-panel--wide">
-              <div class="panel-head">
-                <div>
-                  <p class="panel-kicker">Performance principal</p>
-                  <h4 class="panel-title">Performance</h4>
-                </div>
-              </div>
-              <div class="chart-canvas-wrap">
-                <canvas id="performance-chart"></canvas>
-              </div>
-            </article>
-
-            <article class="panel chart-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="panel-kicker">Distribuição de mídia</p>
-                  <h4 class="panel-title">Mix de mídia</h4>
-                </div>
-              </div>
-              <div class="chart-canvas-wrap chart-canvas-wrap--donut">
-                <canvas id="content-mix-chart"></canvas>
-              </div>
-            </article>
-
-            <article class="panel videos-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="panel-kicker">Melhores vídeos</p>
-                  <h4 class="panel-title">Top vídeos</h4>
-                </div>
-              </div>
-              <div class="video-stack" id="best-videos-list"></div>
-            </article>
-
-            <article class="panel compare-panel">
-              <div class="panel-head">
-                <div>
-                  <p class="panel-kicker">Comparação de períodos</p>
-                  <h4 class="panel-title">Comparativo</h4>
-                </div>
-              </div>
-              <div class="compare-stack" id="comparison-insights"></div>
-            </article>
-          </div>
-
-          <article class="panel table-panel analytics-table-panel">
+        <div class="tt-charts-grid">
+          <article class="panel chart-panel chart-panel--wide">
             <div class="panel-head">
               <div>
-                <p class="panel-kicker">Breakdown analítico</p>
-                <h4 class="panel-title">Breakdown</h4>
+                <p class="panel-kicker">Performance diária</p>
+                <h4 class="panel-title">Receita & GMV</h4>
               </div>
             </div>
-
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Período</th>
-                    <th>Impressões</th>
-                    <th>Cliques</th>
-                    <th>Conversões</th>
-                    <th>Custo</th>
-                    <th>Receita</th>
-                    <th>CTR</th>
-                    <th>CPC</th>
-                    <th>CPA</th>
-                    <th>ROAS</th>
-                  </tr>
-                </thead>
-                <tbody id="analytics-tbody"></tbody>
-              </table>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-revenue-chart"></canvas>
             </div>
           </article>
-        </section>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Funil de conversão</p>
+                <h4 class="panel-title">Views → Compras</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-funnel-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Receita por marca</p>
+                <h4 class="panel-title">Marcas</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-brand-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel chart-panel--wide">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Ranking</p>
+                <h4 class="panel-title">Top 5 Produtos por Receita</h4>
+              </div>
+            </div>
+            <div class="tt-ranking-list" id="tt-top-products-ranking"></div>
+          </article>
+        </div>
+      </div>
+
+      <!-- SUB-TAB 2: PRODUTOS -->
+      <div class="tt-subpage" data-subpage="tt-products" hidden>
+        <article class="panel table-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Análise por produto</p>
+              <h4 class="panel-title">Tabela de Produtos</h4>
+            </div>
+            <div class="tt-search-wrap">
+              <input class="tt-search-input" id="tt-product-search" type="text" placeholder="Buscar produto..." />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table tt-data-table" id="tt-product-table">
+              <thead>
+                <tr>
+                  <th data-sort="name">Produto</th>
+                  <th data-sort="brandName">Marca</th>
+                  <th data-sort="campaignName">Campanha</th>
+                  <th data-sort="views">Views</th>
+                  <th data-sort="clicks">Cliques</th>
+                  <th data-sort="purchases">Compras</th>
+                  <th data-sort="revenue">Receita</th>
+                  <th data-sort="ctr">CTR</th>
+                  <th data-sort="cvr">CVR</th>
+                  <th data-sort="rpm">RPM</th>
+                  <th data-sort="refundRate">Refund</th>
+                </tr>
+              </thead>
+              <tbody id="tt-product-tbody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <div class="tt-charts-grid">
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Receita por produto</p>
+                <h4 class="panel-title">Receita</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-product-revenue-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">CVR por produto</p>
+                <h4 class="panel-title">Conversão</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-product-cvr-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Performance por quadrante</p>
+                <h4 class="panel-title">Views × Receita</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-scatter-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">RPM por produto</p>
+                <h4 class="panel-title">RPM</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-product-rpm-chart"></canvas>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <!-- SUB-TAB 3: CONTEÚDOS -->
+      <div class="tt-subpage" data-subpage="tt-content" hidden>
+        <article class="panel table-panel">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Análise por vídeo</p>
+              <h4 class="panel-title">Tabela de Conteúdos</h4>
+            </div>
+            <div class="tt-search-wrap">
+              <input class="tt-search-input" id="tt-video-search" type="text" placeholder="Buscar vídeo..." />
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table tt-data-table" id="tt-video-table">
+              <thead>
+                <tr>
+                  <th>Vídeo</th>
+                  <th data-sort="productName">Produto</th>
+                  <th data-sort="contentType">Tipo</th>
+                  <th data-sort="views">Views</th>
+                  <th data-sort="ctr">CTR</th>
+                  <th data-sort="cvr">CVR</th>
+                  <th data-sort="revenue">Receita</th>
+                  <th data-sort="rpm">RPM</th>
+                  <th data-sort="watchTime">Watch</th>
+                  <th data-sort="retention3s">Ret 3s</th>
+                  <th data-sort="retention5s">Ret 5s</th>
+                  <th data-sort="score">Score</th>
+                </tr>
+              </thead>
+              <tbody id="tt-video-tbody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <div class="tt-charts-grid">
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Retenção por vídeo</p>
+                <h4 class="panel-title">Curva de Retenção</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-retention-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Hook Rate × Receita</p>
+                <h4 class="panel-title">Scatter de Conteúdo</h4>
+              </div>
+            </div>
+            <div class="chart-canvas-wrap">
+              <canvas id="tt-content-scatter-chart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel chart-panel chart-panel--wide">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Ranking</p>
+                <h4 class="panel-title">Top Vídeos por Receita</h4>
+              </div>
+            </div>
+            <div class="tt-ranking-list" id="tt-top-videos-ranking"></div>
+          </article>
+        </div>
+      </div>
+
+      <!-- SUB-TAB 4: INSIGHTS -->
+      <div class="tt-subpage" data-subpage="tt-insights" hidden>
+        <div class="tt-insights-grid" id="tt-insights-grid"></div>
+
+        <article class="panel chart-panel chart-panel--wide">
+          <div class="panel-head">
+            <div>
+              <p class="panel-kicker">Performance por dia/hora</p>
+              <h4 class="panel-title">Heatmap de Vendas</h4>
+            </div>
+          </div>
+          <div class="tt-heatmap-wrap" id="tt-heatmap"></div>
+        </article>
+      </div>
+
         </div>
 
         <div class="page-view" data-view="goals">

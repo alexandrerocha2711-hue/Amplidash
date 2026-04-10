@@ -9,6 +9,7 @@ import {
   saveFormSubmission,
   saveWeeklyGoal,
   saveProfileUpdate,
+  getTikTokShopSnapshot,
 } from './data.js';
 import { renderContentMixChart, renderPerformanceChart, renderWeeklyGoalsChart } from './charts.js';
 import {
@@ -39,6 +40,14 @@ const state = {
   activeProjectId: null,
   activeCalendarEventId: null,
   activeSection: DEFAULT_SECTION,
+  ttSubtab: 'tt-overview',
+  ttFilters: { period: 'last_7_days', brand: 'all', product: 'all', campaign: 'all', contentType: 'all' },
+  ttSnapshot: null,
+  ttSortKey: 'revenue',
+  ttSortDir: 'desc',
+  ttVideoSortKey: 'revenue',
+  ttVideoSortDir: 'desc',
+  ttCharts: {},
 };
 
 function init() {
@@ -47,6 +56,7 @@ function init() {
   bindEvents();
   initializeSectionNavigation();
   refreshSnapshot(true);
+  initTikTokShop();
 }
 
 function populateControls() {
@@ -56,17 +66,24 @@ function populateControls() {
 }
 
 function populateSelect(element, options) {
+  if (!element) return;
   element.innerHTML = options
     .map((option) => `<option value="${option.value}">${escapeHtml(option.label)}</option>`)
     .join('');
 }
 
 function syncControls() {
-  $('#date-preset-select').value = state.filters.preset;
-  $('#attribution-select').value = state.filters.attribution;
-  $('#comparison-select').value = state.filters.comparison;
-  $('#custom-range-start').value = state.filters.customStart;
-  $('#custom-range-end').value = state.filters.customEnd;
+  const presetEl = $('#date-preset-select');
+  if (!presetEl) return;
+  presetEl.value = state.filters.preset;
+  const attrEl = $('#attribution-select');
+  if (attrEl) attrEl.value = state.filters.attribution;
+  const compEl = $('#comparison-select');
+  if (compEl) compEl.value = state.filters.comparison;
+  const csEl = $('#custom-range-start');
+  if (csEl) csEl.value = state.filters.customStart;
+  const ceEl = $('#custom-range-end');
+  if (ceEl) ceEl.value = state.filters.customEnd;
   updateCustomRangeVisibility();
 }
 
@@ -221,12 +238,14 @@ function maybeRefreshCustomRange() {
 
 function updateCustomRangeVisibility() {
   const customFields = $('#custom-range-fields');
+  if (!customFields) return;
   const isCustom = state.filters.preset === 'custom';
   customFields.hidden = !isCustom;
 }
 
 function refreshSnapshot(immediate = false) {
-  showLoading('Recalculando métricas');
+  const loadingEl = $('#analytics-loading');
+  if (loadingEl) showLoading('Recalculando métricas');
   window.clearTimeout(state.refreshTimer);
 
   state.refreshTimer = window.setTimeout(() => {
@@ -276,42 +295,62 @@ function syncModuleSelections() {
 
 function renderControlMeta() {
   const { period } = state.snapshot;
+  const el = $('#active-period-label');
+  if (!el) return;
 
-  $('#active-period-label').textContent = `${period.label} · ${period.absoluteLabel}`;
-  $('#active-period-copy').textContent = `${period.attributionLabel} · ${period.comparisonLabel} · ${period.granularityLabel}`;
-  $('#granularity-badge').textContent = period.granularityLabel;
-  $('#hero-period-pill').textContent = `${period.label} · ${period.attributionLabel}`;
+  el.textContent = `${period.label} · ${period.absoluteLabel}`;
+  const copy = $('#active-period-copy');
+  if (copy) copy.textContent = `${period.attributionLabel} · ${period.comparisonLabel} · ${period.granularityLabel}`;
+  const badge = $('#granularity-badge');
+  if (badge) badge.textContent = period.granularityLabel;
+  const pill = $('#hero-period-pill');
+  if (pill) pill.textContent = `${period.label} · ${period.attributionLabel}`;
 }
 
 function renderHero() {
   const { creator, accountManager, period, analytics } = state.snapshot;
-
-  $('#creator-avatar-image').src = creator.avatarUrl || '';
-  $('#creator-avatar-image').alt = creator.avatarUrl
+  const avatarEl = $('#creator-avatar-image');
+  if (!avatarEl) return;
+  avatarEl.src = creator.avatarUrl || '';
+  avatarEl.alt = creator.avatarUrl
     ? `Foto de perfil de ${creator.fullName}`
     : 'Foto da creator';
-  $('#creator-avatar-image').hidden = !creator.avatarUrl;
-  $('#hero-name').textContent = creator.fullName;
-  $('#hero-handle').textContent = creator.handle;
-  $('#hero-segment').textContent = creator.segment;
-  $('#hero-city').textContent = creator.city;
-  $('#hero-focus').textContent = creator.focus;
+  avatarEl.hidden = !creator.avatarUrl;
+  const heroName = $('#hero-name');
+  if (heroName) heroName.textContent = creator.fullName;
+  const heroHandle = $('#hero-handle');
+  if (heroHandle) heroHandle.textContent = creator.handle;
+  const heroSegment = $('#hero-segment');
+  if (heroSegment) heroSegment.textContent = creator.segment;
+  const heroCity = $('#hero-city');
+  if (heroCity) heroCity.textContent = creator.city;
+  const heroFocus = $('#hero-focus');
+  if (heroFocus) heroFocus.textContent = creator.focus;
 
-  $('#manager-avatar').textContent = getInitials(accountManager.name);
-  $('#manager-name').textContent = accountManager.name;
-  $('#manager-role').textContent = accountManager.role;
-  $('#manager-coverage').textContent = accountManager.coverage;
-  $('#manager-meeting').textContent = formatDateTimeBR(accountManager.meetingAt);
+  const mgrAvatar = $('#manager-avatar');
+  if (mgrAvatar) mgrAvatar.textContent = getInitials(accountManager.name);
+  const mgrName = $('#manager-name');
+  if (mgrName) mgrName.textContent = accountManager.name;
+  const mgrRole = $('#manager-role');
+  if (mgrRole) mgrRole.textContent = accountManager.role;
+  const mgrCoverage = $('#manager-coverage');
+  if (mgrCoverage) mgrCoverage.textContent = accountManager.coverage;
+  const mgrMeeting = $('#manager-meeting');
+  if (mgrMeeting) mgrMeeting.textContent = formatDateTimeBR(accountManager.meetingAt);
 
   const mailLink = `mailto:${accountManager.email}`;
   const message = `Oi, ${accountManager.name.split(' ')[0]}! Preciso de apoio com a operação no Creator Hub.`;
-  $('#manager-email').href = mailLink;
-  $('#manager-whatsapp').href = buildWhatsAppUrl(accountManager.phone, message);
+  const mgrEmail = $('#manager-email');
+  if (mgrEmail) mgrEmail.href = mailLink;
+  const mgrWA = $('#manager-whatsapp');
+  if (mgrWA) mgrWA.href = buildWhatsAppUrl(accountManager.phone, message);
 
-  $('#sidebar-manager-name').textContent = accountManager.name;
-  $('#sidebar-manager-role').textContent = accountManager.role;
-  $('#sidebar-manager-email').href = mailLink;
-  $('#sidebar-manager-email').textContent = accountManager.email;
+  const sidebarName = $('#sidebar-manager-name');
+  if (sidebarName) sidebarName.textContent = accountManager.name;
+  const sidebarRole = $('#sidebar-manager-role');
+  if (sidebarRole) sidebarRole.textContent = accountManager.role;
+  const sidebarEmail = $('#sidebar-manager-email');
+  if (sidebarEmail) { sidebarEmail.href = mailLink; sidebarEmail.textContent = accountManager.email; }
 }
 
 function renderMetrics() {
@@ -344,6 +383,7 @@ function renderMetrics() {
 
 function renderBestVideos() {
   const container = $('#best-videos-list');
+  if (!container) return;
   const videos = state.snapshot.analytics.bestVideos;
 
   if (!videos.length) {
@@ -390,6 +430,7 @@ function renderBestVideos() {
 
 function renderComparisonInsights() {
   const container = $('#comparison-insights');
+  if (!container) return;
 
   container.innerHTML = state.snapshot.analytics.comparisonInsights
     .map(
@@ -405,6 +446,7 @@ function renderComparisonInsights() {
 
 function renderBreakdownTable() {
   const tbody = $('#analytics-tbody');
+  if (!tbody) return;
   const rows = state.snapshot.analytics.breakdownRows;
 
   if (!rows.length) {
@@ -1339,13 +1381,19 @@ function setActiveNavLink(sectionId) {
 }
 
 function showLoading(message) {
-  $('#analytics-loading').hidden = false;
-  $('#loading-status-text').textContent = `${message}...`;
+  const el = $('#analytics-loading');
+  if (!el) return;
+  el.hidden = false;
+  const txt = $('#loading-status-text');
+  if (txt) txt.textContent = `${message}...`;
 }
 
 function hideLoading() {
-  $('#analytics-loading').hidden = true;
-  $('#loading-status-text').textContent = 'Dados prontos para análise';
+  const el = $('#analytics-loading');
+  if (!el) return;
+  el.hidden = true;
+  const txt = $('#loading-status-text');
+  if (txt) txt.textContent = 'Dados prontos para análise';
 }
 
 function showToast(title, message) {
@@ -1676,6 +1724,449 @@ function getSubmissionStatusClass(status) {
   }
 
   return 'status-approved';
+}
+
+// ============================================================
+// TIKTOK SHOP ANALYTICS MODULE
+// ============================================================
+
+function initTikTokShop() {
+  populateTTFilters();
+  bindTTEvents();
+  refreshTTSnapshot();
+}
+
+function populateTTFilters() {
+  const snap = getTikTokShopSnapshot();
+  const brandSel = $('#tt-brand-select');
+  const productSel = $('#tt-product-select');
+  const campaignSel = $('#tt-campaign-select');
+  const contentSel = $('#tt-content-type-select');
+
+  if (brandSel) {
+    brandSel.innerHTML = '<option value="all">Todas as marcas</option>' +
+      snap.brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+  }
+  if (productSel) {
+    productSel.innerHTML = '<option value="all">Todos os produtos</option>' +
+      snap.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  }
+  if (campaignSel) {
+    campaignSel.innerHTML = '<option value="all">Todas as campanhas</option>' +
+      snap.campaigns.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  }
+  if (contentSel) {
+    contentSel.innerHTML = '<option value="all">Todos os tipos</option>' +
+      snap.contentTypes.map(t => `<option value="${t}">${escapeHtml(t)}</option>`).join('');
+  }
+}
+
+function bindTTEvents() {
+  // Sub-tab navigation
+  $$('.tt-subtab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.ttSubtab = btn.dataset.subtab;
+      $$('.tt-subtab').forEach(b => b.classList.toggle('is-active', b === btn));
+      $$('[data-subpage]').forEach(p => {
+        p.hidden = p.dataset.subpage !== state.ttSubtab;
+      });
+      renderTTCurrentTab();
+    });
+  });
+
+  // Filters
+  $('#tt-period-select')?.addEventListener('change', e => { state.ttFilters.period = e.target.value; refreshTTSnapshot(); });
+  $('#tt-brand-select')?.addEventListener('change', e => { state.ttFilters.brand = e.target.value; refreshTTSnapshot(); });
+  $('#tt-product-select')?.addEventListener('change', e => { state.ttFilters.product = e.target.value; refreshTTSnapshot(); });
+  $('#tt-campaign-select')?.addEventListener('change', e => { state.ttFilters.campaign = e.target.value; refreshTTSnapshot(); });
+  $('#tt-content-type-select')?.addEventListener('change', e => { state.ttFilters.contentType = e.target.value; refreshTTSnapshot(); });
+
+  // Product table sort
+  $$('#tt-product-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (state.ttSortKey === key) state.ttSortDir = state.ttSortDir === 'desc' ? 'asc' : 'desc';
+      else { state.ttSortKey = key; state.ttSortDir = 'desc'; }
+      renderTTProductTable();
+    });
+  });
+
+  // Video table sort
+  $$('#tt-video-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.sort;
+      if (state.ttVideoSortKey === key) state.ttVideoSortDir = state.ttVideoSortDir === 'desc' ? 'asc' : 'desc';
+      else { state.ttVideoSortKey = key; state.ttVideoSortDir = 'desc'; }
+      renderTTVideoTable();
+    });
+  });
+
+  // Search
+  $('#tt-product-search')?.addEventListener('input', () => renderTTProductTable());
+  $('#tt-video-search')?.addEventListener('input', () => renderTTVideoTable());
+}
+
+function refreshTTSnapshot() {
+  state.ttSnapshot = getTikTokShopSnapshot(state.ttFilters);
+  renderTTAll();
+}
+
+function renderTTAll() {
+  renderTTKPIs();
+  renderTTCurrentTab();
+}
+
+function renderTTCurrentTab() {
+  if (state.ttSubtab === 'tt-overview') {
+    renderTTOverviewCharts();
+    renderTTTopProductsRanking();
+  } else if (state.ttSubtab === 'tt-products') {
+    renderTTProductTable();
+    renderTTProductCharts();
+  } else if (state.ttSubtab === 'tt-content') {
+    renderTTVideoTable();
+    renderTTContentCharts();
+    renderTTTopVideosRanking();
+  } else if (state.ttSubtab === 'tt-insights') {
+    renderTTInsights();
+    renderTTHeatmap();
+  }
+}
+
+function renderTTKPIs() {
+  const container = $('#tt-kpi-grid');
+  if (!container || !state.ttSnapshot) return;
+  const k = state.ttSnapshot.kpis;
+
+  const cards = [
+    { label: 'Receita Total', value: formatCurrencyBR(k.revenue.value), delta: k.revenue.delta },
+    { label: 'GMV Total', value: formatCurrencyBR(k.gmv.value), delta: k.gmv.delta },
+    { label: 'Pedidos', value: formatNumber(k.pedidos.value), delta: k.pedidos.delta },
+    { label: 'AOV', value: formatCurrencyBR(k.aov.value, true), delta: k.aov.delta },
+    { label: 'CVR M\u00e9dio', value: formatPercent(k.cvr.value, 1), delta: k.cvr.delta },
+    { label: 'RPM M\u00e9dio', value: `R$ ${k.rpm.value.toFixed(2).replace('.', ',')}`, delta: k.rpm.delta },
+  ];
+
+  container.innerHTML = cards.map(c => {
+    const deltaClass = c.delta == null ? 'is-neutral' : c.delta > 0 ? 'is-positive' : c.delta < 0 ? 'is-negative' : 'is-neutral';
+    const deltaLabel = c.delta == null ? '—' : `${c.delta > 0 ? '+' : ''}${c.delta.toFixed(1).replace('.', ',')}%`;
+    return `
+      <article class="tt-kpi-card">
+        <span class="tt-kpi-label">${escapeHtml(c.label)}</span>
+        <strong class="tt-kpi-value">${escapeHtml(c.value)}</strong>
+        <span class="tt-kpi-delta ${deltaClass}">${escapeHtml(deltaLabel)}</span>
+      </article>
+    `;
+  }).join('');
+}
+
+function renderTTOverviewCharts() {
+  if (!state.ttSnapshot) return;
+  const { dailyData, funnel, brandRevenue } = state.ttSnapshot;
+
+  // Revenue & GMV line chart
+  destroyChart('ttRevenue');
+  const revCanvas = document.getElementById('tt-revenue-chart');
+  if (revCanvas) {
+    state.ttCharts.ttRevenue = new Chart(revCanvas, {
+      type: 'line',
+      data: {
+        labels: dailyData.map(d => d.label),
+        datasets: [
+          { label: 'Receita', data: dailyData.map(d => d.revenue), borderColor: '#52d9a8', backgroundColor: 'rgba(82,217,168,0.1)', borderWidth: 3, pointRadius: 3, tension: 0.35, fill: true },
+          { label: 'GMV', data: dailyData.map(d => d.gmv), borderColor: '#7ed7ff', backgroundColor: 'rgba(126,215,255,0.1)', borderWidth: 2, pointRadius: 2, tension: 0.35, borderDash: [6, 4] },
+        ],
+      },
+      options: ttChartOptions({ y: { ticks: { callback: v => formatCompactNumber(v) } } }),
+    });
+  }
+
+  // Funnel chart
+  destroyChart('ttFunnel');
+  const funnelCanvas = document.getElementById('tt-funnel-chart');
+  if (funnelCanvas) {
+    state.ttCharts.ttFunnel = new Chart(funnelCanvas, {
+      type: 'bar',
+      data: {
+        labels: funnel.map(f => f.label),
+        datasets: [{
+          data: funnel.map(f => f.value),
+          backgroundColor: ['rgba(128,166,255,0.5)', 'rgba(255,207,90,0.5)', 'rgba(82,217,168,0.5)'],
+          borderRadius: 14, borderSkipped: false, maxBarThickness: 56,
+        }],
+      },
+      options: { ...ttChartOptions(), indexAxis: 'y', plugins: { ...ttChartOptions().plugins, legend: { display: false } } },
+    });
+  }
+
+  // Brand revenue chart
+  destroyChart('ttBrand');
+  const brandCanvas = document.getElementById('tt-brand-chart');
+  if (brandCanvas) {
+    state.ttCharts.ttBrand = new Chart(brandCanvas, {
+      type: 'bar',
+      data: {
+        labels: brandRevenue.map(b => b.name),
+        datasets: [{
+          data: brandRevenue.map(b => b.revenue),
+          backgroundColor: brandRevenue.map(b => b.color + '88'),
+          borderColor: brandRevenue.map(b => b.color),
+          borderWidth: 2, borderRadius: 14, borderSkipped: false, maxBarThickness: 44,
+        }],
+      },
+      options: { ...ttChartOptions(), indexAxis: 'y', plugins: { ...ttChartOptions().plugins, legend: { display: false } } },
+    });
+  }
+}
+
+function renderTTTopProductsRanking() {
+  const container = $('#tt-top-products-ranking');
+  if (!container || !state.ttSnapshot) return;
+  container.innerHTML = state.ttSnapshot.topProducts.map((p, i) => `
+    <article class="tt-ranking-item">
+      <div class="tt-ranking-position ${i < 3 ? `rank-${i + 1}` : 'rank-default'}">${i + 1}</div>
+      <div class="tt-ranking-info">
+        <span class="tt-ranking-name">${escapeHtml(p.name)}</span>
+        <span class="tt-ranking-meta">${escapeHtml(p.brandName)} · RPM R$ ${p.rpm.toFixed(2).replace('.', ',')}</span>
+      </div>
+      <strong class="tt-ranking-value">${escapeHtml(formatCurrencyBR(p.revenue))}</strong>
+    </article>
+  `).join('');
+}
+
+function renderTTProductTable() {
+  const tbody = $('#tt-product-tbody');
+  if (!tbody || !state.ttSnapshot) return;
+  const search = ($('#tt-product-search')?.value || '').toLowerCase();
+  let rows = [...state.ttSnapshot.productRows];
+  if (search) rows = rows.filter(r => r.name.toLowerCase().includes(search) || r.brandName.toLowerCase().includes(search));
+  rows.sort((a, b) => {
+    const av = a[state.ttSortKey], bv = b[state.ttSortKey];
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return state.ttSortDir === 'desc' ? -cmp : cmp;
+  });
+  updateSortIndicators('#tt-product-table', state.ttSortKey, state.ttSortDir);
+
+  tbody.innerHTML = rows.map(r => {
+    const cvrDot = r.cvr > 3 ? 'alert-good' : r.cvr < 1 ? 'alert-bad' : 'alert-warn';
+    const rpmDot = r.rpm > 3 ? 'alert-good' : r.rpm < 1 ? 'alert-bad' : 'alert-warn';
+    return `<tr>
+      <td><strong>${escapeHtml(r.name)}</strong></td>
+      <td>${escapeHtml(r.brandName)}</td>
+      <td>${escapeHtml(r.campaignName)}</td>
+      <td>${escapeHtml(formatCompactNumber(r.views))}</td>
+      <td>${escapeHtml(formatCompactNumber(r.clicks))}</td>
+      <td>${escapeHtml(formatNumber(r.purchases))}</td>
+      <td><strong>${escapeHtml(formatCurrencyBR(r.revenue))}</strong></td>
+      <td>${escapeHtml(formatPercent(r.ctr, 1))}</td>
+      <td><span class="tt-alert-dot ${cvrDot}"></span> ${escapeHtml(formatPercent(r.cvr, 1))}</td>
+      <td><span class="tt-alert-dot ${rpmDot}"></span> R$ ${r.rpm.toFixed(2).replace('.', ',')}</td>
+      <td>${escapeHtml(formatPercent(r.refundRate, 1))}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTTProductCharts() {
+  if (!state.ttSnapshot) return;
+  const products = state.ttSnapshot.productRows.slice(0, 8);
+
+  // Revenue bar
+  destroyChart('ttProductRevenue');
+  const rc = document.getElementById('tt-product-revenue-chart');
+  if (rc) {
+    state.ttCharts.ttProductRevenue = new Chart(rc, {
+      type: 'bar',
+      data: { labels: products.map(p => p.name.slice(0, 18)), datasets: [{ data: products.map(p => p.revenue), backgroundColor: 'rgba(82,217,168,0.5)', borderColor: '#52d9a8', borderWidth: 2, borderRadius: 12, borderSkipped: false }] },
+      options: { ...ttChartOptions(), plugins: { ...ttChartOptions().plugins, legend: { display: false } } },
+    });
+  }
+
+  // CVR bar
+  destroyChart('ttProductCVR');
+  const cc = document.getElementById('tt-product-cvr-chart');
+  if (cc) {
+    state.ttCharts.ttProductCVR = new Chart(cc, {
+      type: 'bar',
+      data: { labels: products.map(p => p.name.slice(0, 18)), datasets: [{ data: products.map(p => p.cvr), backgroundColor: 'rgba(255,207,90,0.5)', borderColor: '#ffcf5a', borderWidth: 2, borderRadius: 12, borderSkipped: false }] },
+      options: { ...ttChartOptions(), plugins: { ...ttChartOptions().plugins, legend: { display: false } } },
+    });
+  }
+
+  // Scatter
+  destroyChart('ttScatter');
+  const sc = document.getElementById('tt-scatter-chart');
+  if (sc) {
+    state.ttCharts.ttScatter = new Chart(sc, {
+      type: 'scatter',
+      data: { datasets: [{ label: 'Produtos', data: products.map(p => ({ x: p.views, y: p.revenue, label: p.name })), backgroundColor: products.map(p => p.brandColor + 'cc'), pointRadius: 8, pointHoverRadius: 12 }] },
+      options: { ...ttChartOptions({ x: { title: { display: true, text: 'Views', color: 'rgba(248,251,255,0.5)' }, ticks: { callback: v => formatCompactNumber(v) } }, y: { title: { display: true, text: 'Receita (R$)', color: 'rgba(248,251,255,0.5)' }, ticks: { callback: v => formatCompactNumber(v) } } }), plugins: { ...ttChartOptions().plugins, legend: { display: false }, tooltip: { ...ttChartOptions().plugins.tooltip, callbacks: { label: ctx => `${products[ctx.dataIndex]?.name}: ${formatCurrencyBR(ctx.parsed.y)} · ${formatCompactNumber(ctx.parsed.x)} views` } } } },
+    });
+  }
+
+  // RPM bar
+  destroyChart('ttProductRPM');
+  const rpc = document.getElementById('tt-product-rpm-chart');
+  if (rpc) {
+    state.ttCharts.ttProductRPM = new Chart(rpc, {
+      type: 'bar',
+      data: { labels: products.map(p => p.name.slice(0, 18)), datasets: [{ data: products.map(p => p.rpm), backgroundColor: 'rgba(128,166,255,0.5)', borderColor: '#80a6ff', borderWidth: 2, borderRadius: 12, borderSkipped: false }] },
+      options: { ...ttChartOptions(), plugins: { ...ttChartOptions().plugins, legend: { display: false } } },
+    });
+  }
+}
+
+function renderTTVideoTable() {
+  const tbody = $('#tt-video-tbody');
+  if (!tbody || !state.ttSnapshot) return;
+  const search = ($('#tt-video-search')?.value || '').toLowerCase();
+  let rows = [...state.ttSnapshot.videos];
+  if (search) rows = rows.filter(r => r.title.toLowerCase().includes(search) || r.productName.toLowerCase().includes(search));
+  rows.sort((a, b) => {
+    const av = a[state.ttVideoSortKey], bv = b[state.ttVideoSortKey];
+    const cmp = typeof av === 'string' ? av.localeCompare(bv) : av - bv;
+    return state.ttVideoSortDir === 'desc' ? -cmp : cmp;
+  });
+  updateSortIndicators('#tt-video-table', state.ttVideoSortKey, state.ttVideoSortDir);
+
+  tbody.innerHTML = rows.map(v => {
+    const scoreClass = v.score >= 60 ? 'score-high' : v.score >= 35 ? 'score-mid' : 'score-low';
+    return `<tr>
+      <td><div class="tt-video-cell"><div class="tt-thumb" style="background:${v.brandColor}22;border:1px solid ${v.brandColor}44">🎥</div><span class="tt-video-title" title="${escapeHtml(v.title)}">${escapeHtml(v.title)}</span></div></td>
+      <td>${escapeHtml(v.productName)}</td>
+      <td><span class="tt-content-type">${escapeHtml(v.contentType)}</span></td>
+      <td>${escapeHtml(formatCompactNumber(v.views))}</td>
+      <td>${escapeHtml(formatPercent(v.ctr, 1))}</td>
+      <td>${escapeHtml(formatPercent(v.cvr, 1))}</td>
+      <td><strong>${escapeHtml(formatCurrencyBR(v.revenue))}</strong></td>
+      <td>R$ ${v.rpm.toFixed(2).replace('.', ',')}</td>
+      <td>${v.watchTime.toFixed(1).replace('.', ',')}s</td>
+      <td>${escapeHtml(formatPercent(v.retention3s, 0))}</td>
+      <td>${escapeHtml(formatPercent(v.retention5s, 0))}</td>
+      <td><span class="tt-score-badge ${scoreClass}">${v.score}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTTContentCharts() {
+  if (!state.ttSnapshot) return;
+  const videos = state.ttSnapshot.videos.slice(0, 10);
+
+  // Retention chart
+  destroyChart('ttRetention');
+  const rc = document.getElementById('tt-retention-chart');
+  if (rc) {
+    const labels = ['0s', '3s', '5s', '10s', '15s', '30s'];
+    const datasets = videos.slice(0, 5).map((v, i) => {
+      const colors = ['#52d9a8', '#7ed7ff', '#ff6b9d', '#ffcf5a', '#80a6ff'];
+      return {
+        label: v.title.slice(0, 25),
+        data: [100, v.retention3s, v.retention5s, v.retention5s * 0.7, v.retention5s * 0.45, v.retention5s * 0.2],
+        borderColor: colors[i], backgroundColor: colors[i] + '18',
+        borderWidth: 2, pointRadius: 3, tension: 0.4,
+      };
+    });
+    state.ttCharts.ttRetention = new Chart(rc, { type: 'line', data: { labels, datasets }, options: ttChartOptions() });
+  }
+
+  // Content scatter (hook rate vs revenue)
+  destroyChart('ttContentScatter');
+  const sc = document.getElementById('tt-content-scatter-chart');
+  if (sc) {
+    state.ttCharts.ttContentScatter = new Chart(sc, {
+      type: 'scatter',
+      data: { datasets: [{ label: 'V\u00eddeos', data: videos.map(v => ({ x: v.retention3s, y: v.revenue })), backgroundColor: videos.map(v => v.brandColor + 'cc'), pointRadius: 7, pointHoverRadius: 11 }] },
+      options: { ...ttChartOptions({ x: { title: { display: true, text: 'Hook Rate (Ret. 3s %)', color: 'rgba(248,251,255,0.5)' } }, y: { title: { display: true, text: 'Receita (R$)', color: 'rgba(248,251,255,0.5)' }, ticks: { callback: v => formatCompactNumber(v) } } }), plugins: { ...ttChartOptions().plugins, legend: { display: false } } },
+    });
+  }
+}
+
+function renderTTTopVideosRanking() {
+  const container = $('#tt-top-videos-ranking');
+  if (!container || !state.ttSnapshot) return;
+  const top = state.ttSnapshot.videos.slice(0, 5);
+  container.innerHTML = top.map((v, i) => `
+    <article class="tt-ranking-item">
+      <div class="tt-ranking-position ${i < 3 ? `rank-${i + 1}` : 'rank-default'}">${i + 1}</div>
+      <div class="tt-ranking-info">
+        <span class="tt-ranking-name">${escapeHtml(v.title)}</span>
+        <span class="tt-ranking-meta">${escapeHtml(v.productName)} · ${escapeHtml(v.contentType)} · Score ${v.score}</span>
+      </div>
+      <strong class="tt-ranking-value">${escapeHtml(formatCurrencyBR(v.revenue))}</strong>
+    </article>
+  `).join('');
+}
+
+function renderTTInsights() {
+  const container = $('#tt-insights-grid');
+  if (!container || !state.ttSnapshot) return;
+  container.innerHTML = state.ttSnapshot.insights.map(insight => `
+    <article class="tt-insight-card type-${insight.type}">
+      <span class="tt-insight-icon">${insight.icon}</span>
+      <h5 class="tt-insight-title">${escapeHtml(insight.title)}</h5>
+      <p class="tt-insight-detail">${escapeHtml(insight.detail)}</p>
+    </article>
+  `).join('');
+}
+
+function renderTTHeatmap() {
+  const container = $('#tt-heatmap');
+  if (!container || !state.ttSnapshot) return;
+  const heatmap = state.ttSnapshot.heatmap;
+  const maxVal = Math.max(...heatmap.map(h => h.value));
+  const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00e1b'];
+  const hours = [];
+  for (let h = 6; h <= 23; h++) hours.push(`${String(h).padStart(2, '0')}h`);
+
+  let html = '<div class="tt-heatmap-grid">';
+  // Header row
+  html += '<div class="tt-heatmap-label"></div>';
+  hours.forEach(h => { html += `<div class="tt-heatmap-label">${h}</div>`; });
+  // Data rows
+  days.forEach((day, di) => {
+    html += `<div class="tt-heatmap-label">${day}</div>`;
+    for (let h = 6; h <= 23; h++) {
+      const cell = heatmap.find(c => c.dayIndex === di && c.hour === h);
+      const val = cell?.value || 0;
+      const intensity = maxVal > 0 ? val / maxVal : 0;
+      const r = Math.round(15 + intensity * 67);
+      const g = Math.round(53 + intensity * 164);
+      const b = Math.round(149 + intensity * 106);
+      const a = 0.2 + intensity * 0.8;
+      html += `<div class="tt-heatmap-cell" style="background:rgba(${r},${g},${b},${a})" title="${day} ${String(h).padStart(2,'0')}:00 \u2014 ${val} vendas"></div>`;
+    }
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function ttChartOptions(scaleOverrides = {}) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', padding: 18 } },
+      tooltip: { backgroundColor: 'rgba(7,20,54,0.95)', titleColor: '#fff', bodyColor: 'rgba(255,255,255,0.88)', padding: 12, cornerRadius: 14 },
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: 'rgba(248,251,255,0.78)' }, ...scaleOverrides.x },
+      y: { beginAtZero: true, ...scaleOverrides.y },
+    },
+  };
+}
+
+function destroyChart(key) {
+  if (state.ttCharts[key]) {
+    state.ttCharts[key].destroy();
+    state.ttCharts[key] = null;
+  }
+}
+
+function updateSortIndicators(tableSelector, sortKey, sortDir) {
+  $$(tableSelector + ' th[data-sort]').forEach(th => {
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (th.dataset.sort === sortKey) th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+  });
 }
 
 init();
