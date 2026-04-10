@@ -740,7 +740,8 @@ function prepareQueueForCategory(categoryIndex) {
 
   const pool = participants.filter((participant) => {
     if (category.key === 'bestWeek') return true;
-    return participant.objectives[category.key] && participant.objectives[category.key].trim() !== '';
+    const obj = participant.objectives?.[category.key];
+    return obj && String(obj).trim() !== '';
   });
 
   pool.sort(() => Math.random() - 0.5);

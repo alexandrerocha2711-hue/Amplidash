@@ -11,38 +11,7 @@ const REMOVED_PARTICIPANT_IDS = new Set(['vitor']);
 const PARTICIPANT_DEFAULTS_BY_ID = new Map(
   INITIAL_PARTICIPANTS_DATA.map((participant) => [participant.id, participant]),
 );
-const INITIAL_WEEKLY_FACT_HISTORY = [
-  {
-    id: '2026-02-20',
-    date: '2026-02-20',
-    best: { participantId: 'luan', label: 'Luan', description: 'Viajou para cidade natal' },
-    worst: { participantId: 'nicole', label: 'Nicole', description: 'Ciclo de relacionamento terminado' },
-  },
-  {
-    id: '2026-02-27',
-    date: '2026-02-27',
-    best: { participantId: 'mayra', label: 'Mayra', description: 'Participou de show' },
-    worst: { participantId: 'luan', label: 'Luan', description: 'Torceu o pé no futebol' },
-  },
-  {
-    id: '2026-03-06',
-    date: '2026-03-06',
-    best: { participantId: 'mayra', label: 'Mayra', description: 'Final de semana' },
-    worst: { participantId: 'gabriel', label: 'Gabriel', description: 'Invasão das Baratas' },
-  },
-  {
-    id: '2026-03-13',
-    date: '2026-03-13',
-    best: { participantId: 'gean', label: 'Gean', description: 'Comemoração do niver' },
-    worst: { participantId: 'camila', label: 'Camila', description: 'Corrida tensa com o uber' },
-  },
-  {
-    id: '2026-03-20',
-    date: '2026-03-20',
-    best: { participantId: 'leonardo', label: 'Leo', description: 'Carro ganhando elogios' },
-    worst: { participantId: 'alexandre-neto', label: 'Ale Neto', description: 'PC dando pau' },
-  },
-];
+const INITIAL_WEEKLY_FACT_HISTORY = [];
 
 function isStorageAvailable() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -96,6 +65,14 @@ function withTotals(participants) {
 }
 
 function normalizeParticipantMetadata(participants) {
+  const existingIds = new Set(participants.map(p => p.id));
+  
+  for (const [id, defaultData] of PARTICIPANT_DEFAULTS_BY_ID.entries()) {
+    if (!existingIds.has(id) && !REMOVED_PARTICIPANT_IDS.has(id)) {
+      participants.push(cloneParticipants([defaultData])[0]);
+    }
+  }
+
   return participants
     .filter((participant) => !REMOVED_PARTICIPANT_IDS.has(participant.id))
     .map((participant) => {
@@ -164,11 +141,29 @@ if (!participantState) {
   participantState = cloneParticipants(INITIAL_PARTICIPANTS_DATA);
 }
 
+// HOTFIX: Force overwrite objectives for Bruno and Gabriel, and force sync categories/scoreBreakdown for all
+participantState = participantState.map((participant) => {
+  const defaults = PARTICIPANT_DEFAULTS_BY_ID.get(participant.id);
+  if (defaults) {
+    const isOverrideObjectives = participant.id === 'bruno' || participant.id === 'gabriel';
+    return {
+      ...participant,
+      categories: { ...defaults.categories },
+      scoreBreakdown: { ...defaults.scoreBreakdown },
+      objectives: isOverrideObjectives ? { ...defaults.objectives } : participant.objectives
+    };
+  }
+  return participant;
+});
+
 participantState = normalizeParticipantMetadata(participantState);
 participantState = withTotals(participantState);
 writeStoredState(participantState);
 
 let weeklyFactHistory = normalizeWeeklyFactHistory(readStoredWeeklyFactHistory() || []);
+
+// HOTFIX: Wipe localStorage weekly facts completely as requested
+weeklyFactHistory = [];
 writeStoredWeeklyFactHistory(weeklyFactHistory);
 
 export function getParticipantsData() {
