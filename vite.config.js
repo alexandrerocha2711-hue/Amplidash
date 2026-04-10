@@ -15,6 +15,15 @@ const melhoresHtmlAliases = new Set([
   '/src/melhores/index.html',
 ]);
 
+const dashCriadorHtmlAliases = new Set([
+  '/dash_criador',
+  '/dash_criador/',
+  '/dash_criador/index.html',
+  '/src/dash_criador',
+  '/src/dash_criador/',
+  '/src/dash_criador/index.html',
+]);
+
 async function readJsonBody(req) {
   const chunks = [];
 
@@ -56,6 +65,10 @@ export default defineConfig({
             req.url = `/melhores/index.html${search ? `?${search}` : ''}`;
           }
 
+          if (req.method === 'GET' && dashCriadorHtmlAliases.has(pathname)) {
+            req.url = `/dash_criador/index.html${search ? `?${search}` : ''}`;
+          }
+
           if (req.method === 'OPTIONS' && pathname.startsWith('/api/melhores/')) {
             sendJson(res, {
               status: 204,
@@ -95,7 +108,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        melhores: resolve(__dirname, 'melhores/index.html')
+        melhores: resolve(__dirname, 'melhores/index.html'),
+        dash_criador: resolve(__dirname, 'dash_criador/index.html'),
       }
     }
   }

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amplify Creator Hub | Dash do Criador</title>
+  <meta
+    name="description"
+    content="Plataforma SaaS da Amplify para top creators com analytics dinâmico por janela de tempo, produtos, forms e perfil integrado ao fluxo operacional."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet"
+  />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/src/dash_criador/css/styles.css" />
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">
+          <img src="/LOGOAMPLI.png" alt="Amplify" />
+        </div>
+        <div>
+          <p class="sidebar-eyebrow">Amplify Creator Hub</p>
+          <h1 class="sidebar-title">Dash do Criador</h1>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Navegação principal">
+        <a class="nav-link is-active" href="#overview">Dashboard</a>
+        <a class="nav-link" href="#goals">Metas</a>
+        <a class="nav-link" href="#projects">Projetos</a>
+        <a class="nav-link" href="#calendar">Calendário</a>
+        <a class="nav-link" href="#forms">Forms</a>
+        <a class="nav-link" href="#profile">Meu perfil</a>
+      </nav>
+
+      <div class="sidebar-card">
+        <span class="sidebar-card-label">Atendimento Amplify</span>
+        <strong class="sidebar-card-title" id="sidebar-manager-name">Account Manager</strong>
+        <p class="sidebar-card-copy" id="sidebar-manager-role">Canal principal para aprovações, alinhamentos e destraves.</p>
+        <a class="sidebar-card-link" id="sidebar-manager-email" href="#">Contato direto</a>
+      </div>
+    </aside>
+
+    <div class="content-column">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Plataforma SaaS para Top Creators</p>
+          <h2 class="topbar-title">Creator Hub Amplify</h2>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="button button-secondary" id="copy-summary-btn" type="button">Copiar resumo</button>
+          <button class="button button-primary" data-open-modal="quick-request" type="button">Abrir solicitação</button>
+        </div>
+      </header>
+
+      <main class="main-content">
+        <div class="page-view" data-view="overview">
+      <section class="control-bar panel" aria-label="Filtros globais do dashboard">
+        <div class="control-grid">
+          <label class="field-inline field-inline--period">
+            <span>Período</span>
+            <select id="date-preset-select"></select>
+          </label>
+
+          <div class="custom-range-fields control-group--dates" id="custom-range-fields" hidden>
+            <label class="field-inline">
+              <span>Início</span>
+              <input id="custom-range-start" type="date" />
+            </label>
+
+            <label class="field-inline">
+              <span>Fim</span>
+              <input id="custom-range-end" type="date" />
+            </label>
+          </div>
+
+          <label class="field-inline field-inline--attribution">
+            <span>Atribuição</span>
+            <select id="attribution-select"></select>
+          </label>
+
+          <label class="field-inline field-inline--comparison">
+            <span>Comparação</span>
+            <select id="comparison-select"></select>
+          </label>
+        </div>
+
+        <div class="control-meta">
+          <div>
+            <p class="control-meta-label">Período ativo</p>
+            <strong class="control-meta-value" id="active-period-label">Carregando...</strong>
+            <p class="control-meta-copy" id="active-period-copy">Preparando análise do dashboard.</p>
+          </div>
+
+          <div class="control-status" id="control-status">
+            <span class="status-dot"></span>
+            <span id="loading-status-text">Dados prontos para análise</span>
+          </div>
+        </div>
+      </section>
+        <section class="hero-grid" id="overview" data-section="overview">
+          <article class="panel hero-panel">
+            <div class="hero-identity">
+              <img class="creator-avatar" id="creator-avatar-image" src="" alt="Foto da creator" />
+              <div class="hero-identity-copy">
+                <span class="hero-chip" id="hero-period-pill">Período</span>
+                <h3 class="hero-title" id="hero-name">Creator</h3>
+              </div>
+            </div>
+
+            <div class="hero-meta">
+              <div class="meta-card">
+                <span class="meta-label">Handle</span>
+                <strong class="meta-value" id="hero-handle">@creator</strong>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">Nicho</span>
+                <strong class="meta-value" id="hero-segment">Lifestyle</strong>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">Cidade</span>
+                <strong class="meta-value" id="hero-city">São Paulo, SP</strong>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">Foco atual</span>
+                <strong class="meta-value" id="hero-focus">Live commerce</strong>
+              </div>
+            </div>
+
+            <div class="hero-actions">
+              <button class="button button-ghost" type="button" data-scroll-target="#profile">Atualizar cadastro</button>
+              <button class="button button-ghost" type="button" data-open-modal="anonymous-report">Denúncia anônima</button>
+            </div>
+          </article>
+
+          <article class="panel manager-panel">
+            <div class="manager-header">
+              <div class="manager-avatar" id="manager-avatar">AM</div>
+              <div>
+                <p class="manager-label">Seu Account Manager</p>
+                <h3 class="manager-name" id="manager-name">Bianca Mendes</h3>
+                <p class="manager-role" id="manager-role">Account Manager</p>
+              </div>
+            </div>
+
+            <div class="manager-details">
+              <div class="detail-item">
+                <span class="detail-label">Cobertura</span>
+                <strong class="detail-value" id="manager-coverage">Beauty, Retail e Live Commerce</strong>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Próximo check-in</span>
+                <strong class="detail-value" id="manager-meeting">15/04 às 16:30</strong>
+              </div>
+            </div>
+
+            <div class="manager-actions">
+              <a class="button button-secondary" id="manager-email" href="#">E-mail</a>
+              <a class="button button-secondary" id="manager-whatsapp" href="#" target="_blank" rel="noreferrer">WhatsApp</a>
+            </div>
+          </article>
+        </section>
+
+        <section class="section" data-section="overview">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Dashboard de resultados</p>
+              <h3 class="section-title">Resultados</h3>
+            </div>
+            <span class="section-badge" id="granularity-badge">Granularidade diária</span>
+          </div>
+
+          <div class="metric-grid" id="metric-grid"></div>
+
+          <div class="dashboard-grid">
+            <article class="panel chart-panel chart-panel--wide">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Performance principal</p>
+                  <h4 class="panel-title">Performance</h4>
+                </div>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="performance-chart"></canvas>
+              </div>
+            </article>
+
+            <article class="panel chart-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Distribuição de mídia</p>
+                  <h4 class="panel-title">Mix de mídia</h4>
+                </div>
+              </div>
+              <div class="chart-canvas-wrap chart-canvas-wrap--donut">
+                <canvas id="content-mix-chart"></canvas>
+              </div>
+            </article>
+
+            <article class="panel videos-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Melhores vídeos</p>
+                  <h4 class="panel-title">Top vídeos</h4>
+                </div>
+              </div>
+              <div class="video-stack" id="best-videos-list"></div>
+            </article>
+
+            <article class="panel compare-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Comparação de períodos</p>
+                  <h4 class="panel-title">Comparativo</h4>
+                </div>
+              </div>
+              <div class="compare-stack" id="comparison-insights"></div>
+            </article>
+          </div>
+
+          <article class="panel table-panel analytics-table-panel">
+            <div class="panel-head">
+              <div>
+                <p class="panel-kicker">Breakdown analítico</p>
+                <h4 class="panel-title">Breakdown</h4>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Período</th>
+                    <th>Impressões</th>
+                    <th>Cliques</th>
+                    <th>Conversões</th>
+                    <th>Custo</th>
+                    <th>Receita</th>
+                    <th>CTR</th>
+                    <th>CPC</th>
+                    <th>CPA</th>
+                    <th>ROAS</th>
+                  </tr>
+                </thead>
+                <tbody id="analytics-tbody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+        </div>
+
+        <div class="page-view" data-view="goals">
+        <section class="section" id="goals" data-section="goals">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Metas Semanais</p>
+              <h3 class="section-title">Metas Semanais</h3>
+            </div>
+            <span class="section-badge">Janela fixa de 7 dias</span>
+          </div>
+
+          <div class="weekly-goals-grid">
+            <article class="panel goal-onboarding-panel" id="weekly-goal-onboarding-panel"></article>
+            <article class="panel weekly-goal-focus-panel" id="weekly-goal-focus-panel"></article>
+          </div>
+
+          <div class="weekly-alerts" id="weekly-alerts"></div>
+
+          <div class="weekly-goal-cards" id="weekly-goal-cards"></div>
+
+          <div class="weekly-comparison-grid">
+            <article class="panel weekly-comparison-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Semana atual vs anterior</p>
+                  <h4 class="panel-title">Semana x semana</h4>
+                </div>
+                <span class="compare-chip" id="weekly-compare-reference">Semana anterior</span>
+              </div>
+              <div class="weekly-compare-list" id="weekly-compare-list"></div>
+            </article>
+
+            <article class="panel weekly-history-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Histórico e evolução</p>
+                  <h4 class="panel-title">Meta x realizado</h4>
+                </div>
+              </div>
+
+              <div class="weekly-metric-tabs" id="weekly-metric-tabs"></div>
+
+              <div class="chart-canvas-wrap chart-canvas-wrap--history">
+                <canvas id="weekly-goals-chart"></canvas>
+              </div>
+            </article>
+          </div>
+        </section>
+        </div>
+
+        <div class="page-view" data-view="projects">
+        <section class="section" id="projects" data-section="projects">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Projetos</p>
+              <h3 class="section-title">Projetos ativos</h3>
+            </div>
+            <span class="section-badge">O que eu preciso fazer</span>
+          </div>
+
+          <div class="project-summary-grid" id="project-summary-grid"></div>
+
+          <div class="projects-layout">
+            <article class="panel project-list-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Projetos Squad</p>
+                  <h4 class="panel-title">Campanhas vinculadas</h4>
+                </div>
+              </div>
+              <div class="project-list" id="project-list"></div>
+            </article>
+
+            <article class="panel project-detail-panel" id="project-detail-panel"></article>
+          </div>
+        </section>
+        </div>
+
+        <div class="page-view" data-view="calendar">
+        <section class="section" id="calendar" data-section="calendar">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Calendário</p>
+              <h3 class="section-title">Agenda da creator</h3>
+            </div>
+            <span class="section-badge section-badge--soft" id="calendar-category-badge">Diamond</span>
+          </div>
+
+          <div class="calendar-layout">
+            <article class="panel calendar-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Visão mensal</p>
+                  <h4 class="panel-title" id="calendar-month-label">Abril 2026</h4>
+                </div>
+              </div>
+
+              <div class="calendar-grid-shell">
+                <div class="calendar-weekdays">
+                  <span class="calendar-weekday">Seg</span>
+                  <span class="calendar-weekday">Ter</span>
+                  <span class="calendar-weekday">Qua</span>
+                  <span class="calendar-weekday">Qui</span>
+                  <span class="calendar-weekday">Sex</span>
+                  <span class="calendar-weekday">Sáb</span>
+                  <span class="calendar-weekday">Dom</span>
+                </div>
+                <div class="calendar-grid" id="calendar-grid"></div>
+              </div>
+            </article>
+
+            <article class="panel calendar-upcoming-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Próximos eventos</p>
+                  <h4 class="panel-title">Próximos 7 dias</h4>
+                </div>
+              </div>
+              <div class="upcoming-event-list" id="calendar-upcoming-list"></div>
+            </article>
+          </div>
+
+          <article class="panel calendar-detail-panel" id="calendar-detail-panel"></article>
+        </section>
+        </div>
+
+        <div class="page-view" data-view="forms">
+        <section class="section" id="forms" data-section="forms">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Forms</p>
+              <h3 class="section-title">Central de Forms</h3>
+            </div>
+            <span class="section-badge section-badge--soft">Logs filtrados pelo período ativo</span>
+          </div>
+
+          <div class="forms-grid">
+            <article class="panel form-card">
+              <span class="form-badge">Operação</span>
+              <h4 class="panel-title">Formulários rápidos</h4>
+              <button class="button button-primary" type="button" data-open-modal="quick-request">Abrir formulário rápido</button>
+            </article>
+
+            <article class="panel form-card">
+              <span class="form-badge form-badge--danger">Confidencial</span>
+              <h4 class="panel-title">Denúncia anônima</h4>
+              <button class="button button-secondary" type="button" data-open-modal="anonymous-report">Enviar denúncia</button>
+            </article>
+
+            <article class="panel form-card">
+              <span class="form-badge form-badge--neutral">Experiência</span>
+              <h4 class="panel-title">NPS Amplify</h4>
+              <button class="button button-secondary" type="button" data-open-modal="nps">Responder NPS</button>
+            </article>
+
+            <article class="panel form-log-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Últimos envios</p>
+                  <h4 class="panel-title">Fila do período</h4>
+                </div>
+              </div>
+              <div class="activity-list" id="submission-log"></div>
+            </article>
+          </div>
+        </section>
+        </div>
+
+        <div class="page-view" data-view="profile">
+        <section class="section" id="profile" data-section="profile">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">Meu perfil</p>
+              <h3 class="section-title">Perfil e cadastro</h3>
+            </div>
+          </div>
+
+          <div class="profile-grid">
+            <article class="panel profile-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Espelho cadastral</p>
+                  <h4 class="panel-title">Dados atuais</h4>
+                </div>
+                <span class="sync-pill" id="sync-pill">Pronto para automação</span>
+              </div>
+
+              <div class="profile-details" id="profile-details"></div>
+
+              <div class="sync-note">
+                <p class="sync-note-title">Sincronização</p>
+                <p class="sync-note-time" id="sync-note-time">Nenhuma atualização recente.</p>
+              </div>
+            </article>
+
+            <article class="panel update-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker">Atualização cadastral</p>
+                  <h4 class="panel-title">Atualizar dados</h4>
+                </div>
+              </div>
+
+              <form class="profile-form" id="profile-form">
+                <div class="form-grid">
+                  <label class="field">
+                    <span>Nome completo</span>
+                    <input type="text" name="fullName" required />
+                  </label>
+
+                  <label class="field">
+                    <span>Instagram</span>
+                    <input type="text" name="instagram" required />
+                  </label>
+
+                  <label class="field">
+                    <span>E-mail</span>
+                    <input type="email" name="email" required />
+                  </label>
+
+                  <label class="field">
+                    <span>WhatsApp</span>
+                    <input type="tel" name="phone" required />
+                  </label>
+
+                  <label class="field">
+                    <span>Cidade</span>
+                    <input type="text" name="city" required />
+                  </label>
+
+                  <label class="field">
+                    <span>Nicho</span>
+                    <select name="niche" required>
+                      <option value="Beauty & Lifestyle">Beauty & Lifestyle</option>
+                      <option value="Moda & Conteúdo">Moda & Conteúdo</option>
+                      <option value="Varejo & Live Shopping">Varejo & Live Shopping</option>
+                      <option value="Casa & Decoração">Casa & Decoração</option>
+                    </select>
+                  </label>
+
+                  <label class="field field--wide">
+                    <span>Endereço para envio</span>
+                    <input type="text" name="shippingAddress" required />
+                  </label>
+
+                  <label class="field">
+                    <span>Chave Pix</span>
+                    <input type="text" name="pixKey" />
+                  </label>
+
+                  <label class="field">
+                    <span>Preferência de contato</span>
+                    <select name="contactPreference">
+                      <option value="WhatsApp">WhatsApp</option>
+                      <option value="E-mail">E-mail</option>
+                      <option value="Ambos">Ambos</option>
+                    </select>
+                  </label>
+
+                  <label class="field field--wide">
+                    <span>Observações</span>
+                    <textarea name="notes" rows="4" placeholder="Atualizações relevantes para o time Amplify"></textarea>
+                  </label>
+                </div>
+
+                <div class="form-actions">
+                  <button class="button button-primary" type="submit">Enviar atualização</button>
+                  <p class="form-footnote">Este envio já fica estruturado para acionar a automação futura do Notion.</p>
+                </div>
+              </form>
+            </article>
+          </div>
+        </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="loading-layer" id="analytics-loading" hidden>
+    <div class="loading-card">
+      <span class="spinner"></span>
+      <div>
+        <strong>Recalculando métricas</strong>
+        <p>Todas as métricas estão sendo atualizadas dentro da janela selecionada.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-layer" id="modal-layer" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+
+    <div class="modal-shell">
+      <section class="modal-card" data-modal="quick-request" hidden>
+        <button class="modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        <p class="modal-kicker">Formulário rápido</p>
+        <h3 class="modal-title">Abrir uma solicitação operacional</h3>
+
+        <form class="modal-form" id="quick-request-form">
+          <label class="field">
+            <span>Categoria</span>
+            <select name="requestType" required>
+              <option value="Produto">Produto</option>
+              <option value="Suporte operacional">Suporte operacional</option>
+              <option value="Ajuste de briefing">Ajuste de briefing</option>
+              <option value="Financeiro">Financeiro</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Prioridade</span>
+            <select name="priority" required>
+              <option value="Alta">Alta</option>
+              <option value="Média">Média</option>
+              <option value="Baixa">Baixa</option>
+            </select>
+          </label>
+
+          <label class="field field--wide">
+            <span>Descreva sua necessidade</span>
+            <textarea name="details" rows="4" required placeholder="Explique o que você precisa e o contexto da solicitação."></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Enviar solicitação</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="modal-card" data-modal="anonymous-report" hidden>
+        <button class="modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        <p class="modal-kicker">Denúncia anônima</p>
+        <h3 class="modal-title">Registrar relato confidencial</h3>
+
+        <form class="modal-form" id="anonymous-report-form">
+          <label class="field">
+            <span>Tipo de ocorrência</span>
+            <select name="reportType" required>
+              <option value="Conduta">Conduta</option>
+              <option value="Processo">Falha de processo</option>
+              <option value="Assédio">Assédio</option>
+              <option value="Outro">Outro</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Canal relacionado</span>
+            <select name="channel" required>
+              <option value="Operação">Operação</option>
+              <option value="Atendimento">Atendimento</option>
+              <option value="Comercial">Comercial</option>
+              <option value="Logística">Logística</option>
+            </select>
+          </label>
+
+          <label class="field field--wide">
+            <span>Relato</span>
+            <textarea name="description" rows="5" required placeholder="Descreva a situação com o máximo de contexto possível."></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Enviar relato</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="modal-card" data-modal="nps" hidden>
+        <button class="modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+        <p class="modal-kicker">NPS Amplify</p>
+        <h3 class="modal-title">Como está sua experiência com a operação?</h3>
+
+        <form class="modal-form" id="nps-form">
+          <input type="hidden" name="score" id="nps-score" value="" />
+
+          <div class="score-grid" id="nps-score-grid">
+            <button class="score-button" type="button" data-score="0">0</button>
+            <button class="score-button" type="button" data-score="1">1</button>
+            <button class="score-button" type="button" data-score="2">2</button>
+            <button class="score-button" type="button" data-score="3">3</button>
+            <button class="score-button" type="button" data-score="4">4</button>
+            <button class="score-button" type="button" data-score="5">5</button>
+            <button class="score-button" type="button" data-score="6">6</button>
+            <button class="score-button" type="button" data-score="7">7</button>
+            <button class="score-button" type="button" data-score="8">8</button>
+            <button class="score-button" type="button" data-score="9">9</button>
+            <button class="score-button" type="button" data-score="10">10</button>
+          </div>
+
+          <label class="field field--wide">
+            <span>Comentário complementar</span>
+            <textarea name="comment" rows="4" placeholder="Conte o que está funcionando bem e o que podemos melhorar."></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="button button-primary" type="submit">Enviar NPS</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="module" src="/src/dash_criador/js/app.js"></script>
+</body>
+
+</html>

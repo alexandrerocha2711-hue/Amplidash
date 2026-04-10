@@ -24,6 +24,26 @@
   status = 301
 
 [[redirects]]
+  from = "/dash_criador"
+  to = "/dash_criador/"
+  status = 301
+
+[[redirects]]
+  from = "/src/dash_criador"
+  to = "/dash_criador/"
+  status = 301
+
+[[redirects]]
+  from = "/src/dash_criador/"
+  to = "/dash_criador/"
+  status = 301
+
+[[redirects]]
+  from = "/src/dash_criador/index.html"
+  to = "/dash_criador/"
+  status = 301
+
+[[redirects]]
   from = "/api/melhores/state"
   to = "/.netlify/functions/melhores-state"
   status = 200
