@@ -1,5 +1,5 @@
 import { connectLambda } from '@netlify/blobs';
-import { handleMelhoresResetRequest } from '../../server/melhores-api.js';
+import { handleMelhoresSavesRequest } from '../../server/melhores-api.js';
 
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -14,7 +14,8 @@ export async function handler(event) {
   }
 
   connectLambda(event);
-  const response = await handleMelhoresResetRequest();
+  const body = event.body ? JSON.parse(event.body) : {};
+  const response = await handleMelhoresSavesRequest(body, event.httpMethod);
 
   return {
     statusCode: response.status,

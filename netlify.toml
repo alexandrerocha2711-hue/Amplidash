@@ -57,3 +57,8 @@
   from = "/api/melhores/reset"
   to = "/.netlify/functions/melhores-reset"
   status = 200
+
+[[redirects]]
+  from = "/api/melhores/saves"
+  to = "/.netlify/functions/melhores-saves"
+  status = 200

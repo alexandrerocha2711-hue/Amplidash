@@ -47,6 +47,7 @@ function writeStoredState(state) {
   } catch (error) {
     console.error('Error writing local storage:', error);
   }
+  scheduleSyncToServer();
 }
 
 function readStoredWeeklyFactHistory() {
@@ -66,6 +67,41 @@ function writeStoredWeeklyFactHistory(entries) {
     window.localStorage.setItem(WEEKLY_FACT_HISTORY_STORAGE_KEY, JSON.stringify(entries));
   } catch (error) {
     console.error('Error writing weekly fact history to local storage:', error);
+  }
+  scheduleSyncToServer();
+}
+
+// ---------------------------------------------------------------------------
+// Server sync layer — Netlify Blobs via API
+// ---------------------------------------------------------------------------
+
+const API_BASE = '/api/melhores';
+let _syncTimer = null;
+let _skipSync = false;
+
+function scheduleSyncToServer() {
+  if (_skipSync) return;
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    fetch(`${API_BASE}/apply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participants: participantState,
+        weeklyFactHistory,
+      }),
+    }).catch((err) => console.warn('[sync] Server sync failed:', err.message));
+  }, 400);
+}
+
+async function fetchServerState() {
+  try {
+    const res = await fetch(`${API_BASE}/state`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.ok ? data : null;
+  } catch {
+    return null;
   }
 }
 
@@ -157,23 +193,24 @@ function normalizeWeeklyFactHistory(entries) {
 }
 
 // ---------------------------------------------------------------------------
-// Initial hydration — localStorage is the single source of truth
+// Initial hydration — localStorage as cache, server as source of truth
 // ---------------------------------------------------------------------------
+
+// Start with localStorage cache for instant render (sync happens in loadParticipantsData)
+_skipSync = true;
 
 let participantState = readStoredState();
 
 if (!participantState) {
-  // Primeiro acesso: inicializa com os dados padrão
   participantState = cloneParticipants(INITIAL_PARTICIPANTS_DATA);
 }
 
-// Apenas preenche metadados visuais e adiciona participantes novos
 participantState = normalizeParticipantMetadata(participantState);
 participantState = withTotals(participantState);
-writeStoredState(participantState);
 
-// Fatos da semana — carrega do storage, nunca apaga automaticamente
 let weeklyFactHistory = normalizeWeeklyFactHistory(readStoredWeeklyFactHistory() || []);
+
+_skipSync = false;
 
 // ---------------------------------------------------------------------------
 // Public API — leitura
@@ -185,7 +222,7 @@ export function getParticipantsData() {
 
 export function getSourceInfo() {
   return {
-    source: 'local',
+    source: 'server',
     syncedAt: new Date().toISOString(),
     error: null,
   };
@@ -195,7 +232,38 @@ export function getWeeklyFactHistory() {
   return weeklyFactHistory;
 }
 
+/**
+ * Carrega dados — tenta servidor primeiro, fallback para localStorage.
+ * Na primeira vez, migra dados locais para o servidor automaticamente.
+ */
 export async function loadParticipantsData() {
+  const serverData = await fetchServerState();
+
+  if (serverData && serverData.participants && serverData.participants.length > 0) {
+    // Server tem dados — usar como fonte da verdade
+    _skipSync = true;
+
+    participantState = normalizeParticipantMetadata(serverData.participants);
+    participantState = withTotals(participantState);
+    weeklyFactHistory = normalizeWeeklyFactHistory(serverData.weeklyFactHistory || []);
+
+    // Atualiza cache local
+    writeStoredState(participantState);
+    writeStoredWeeklyFactHistory(weeklyFactHistory);
+
+    _skipSync = false;
+  } else {
+    // Server vazio — usar dados locais + migrar para o servidor
+    const local = readStoredState();
+    if (local && local.length > 0) {
+      participantState = normalizeParticipantMetadata(local);
+      participantState = withTotals(participantState);
+      weeklyFactHistory = normalizeWeeklyFactHistory(readStoredWeeklyFactHistory() || []);
+      // Migrar para o servidor
+      scheduleSyncToServer();
+    }
+  }
+
   return {
     participants: participantState,
     weeklyFactHistory,
@@ -403,83 +471,77 @@ export function getCategorizedRankings() {
 }
 
 // ===========================================================================
-// Snapshot / Save System
+// Snapshot / Save System — Server-synced
 // ===========================================================================
 
-const SNAPSHOTS_STORAGE_KEY = 'amplify_melhores_saves_v1';
-const MAX_SNAPSHOTS = 50;
+/**
+ * Creates a snapshot of the current game state (saved on server).
+ */
+export function createSnapshot(description = 'Salvamento manual') {
+  // Fire-and-forget to server
+  fetch(`${API_BASE}/saves`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'create',
+      description,
+      participants: participantState,
+      weeklyFactHistory,
+    }),
+  }).catch((err) => console.warn('[saves] Create failed:', err.message));
+}
 
-function readSnapshots() {
-  if (!isStorageAvailable()) return [];
+/**
+ * Returns all saved snapshots from server (newest first).
+ */
+export async function getSnapshots() {
   try {
-    const raw = window.localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch(`${API_BASE}/saves`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.ok ? (data.saves || []) : [];
   } catch {
     return [];
   }
 }
 
-function writeSnapshots(snapshots) {
-  if (!isStorageAvailable()) return;
+/**
+ * Restores the game state from a server snapshot.
+ */
+export async function restoreSnapshot(snapshotId) {
   try {
-    window.localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
-  } catch {}
-}
+    const res = await fetch(`${API_BASE}/saves`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'restore', snapshotId }),
+    });
+    const data = await res.json();
+    if (!data.ok) return false;
 
-/**
- * Creates a snapshot of the current game state.
- */
-export function createSnapshot(description = 'Salvamento manual') {
-  const snapshots = readSnapshots();
+    _skipSync = true;
+    participantState = withTotals(data.participants || []);
+    weeklyFactHistory = data.weeklyFactHistory || [];
+    writeStoredState(participantState);
+    writeStoredWeeklyFactHistory(weeklyFactHistory);
+    _skipSync = false;
 
-  const snapshot = {
-    id: `save_${Date.now()}`,
-    timestamp: new Date().toISOString(),
-    description,
-    participants: JSON.parse(JSON.stringify(participantState)),
-    weeklyFactHistory: JSON.parse(JSON.stringify(weeklyFactHistory)),
-  };
-
-  snapshots.unshift(snapshot); // newest first
-
-  // Limit to MAX_SNAPSHOTS
-  if (snapshots.length > MAX_SNAPSHOTS) {
-    snapshots.length = MAX_SNAPSHOTS;
+    return true;
+  } catch {
+    return false;
   }
-
-  writeSnapshots(snapshots);
-  return snapshot;
 }
 
 /**
- * Returns all saved snapshots (newest first).
+ * Deletes a snapshot on the server by ID.
  */
-export function getSnapshots() {
-  return readSnapshots();
-}
-
-/**
- * Restores the game state from a snapshot.
- */
-export function restoreSnapshot(snapshotId) {
-  const snapshots = readSnapshots();
-  const snapshot = snapshots.find((s) => s.id === snapshotId);
-  if (!snapshot) return false;
-
-  participantState = withTotals(snapshot.participants || []);
-  weeklyFactHistory = snapshot.weeklyFactHistory || [];
-
-  writeStoredState(participantState);
-  writeStoredWeeklyFactHistory(weeklyFactHistory);
-
-  return true;
-}
-
-/**
- * Deletes a snapshot by ID.
- */
-export function deleteSnapshot(snapshotId) {
-  const snapshots = readSnapshots();
-  const filtered = snapshots.filter((s) => s.id !== snapshotId);
-  writeSnapshots(filtered);
+export async function deleteSnapshot(snapshotId) {
+  try {
+    await fetch(`${API_BASE}/saves`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', snapshotId }),
+    });
+  } catch (err) {
+    console.warn('[saves] Delete failed:', err.message);
+  }
 }

@@ -1614,12 +1614,28 @@ window.showParticipantGoals = showParticipantGoals;
 // Saves / Snapshots Popup
 // ===========================================================================
 
-function openSavesPopup() {
+async function openSavesPopup() {
   // Remove existing if any
   const existing = $('#saves-popup');
   if (existing) existing.remove();
 
-  const snapshots = getSnapshots();
+  // Show loading state
+  const loading = document.createElement('div');
+  loading.id = 'saves-popup';
+  loading.className = 'modal-backdrop';
+  loading.style.display = 'flex';
+  loading.innerHTML = `
+    <div class="modal-card saves-popup-card">
+      <div class="modal-header">
+        <span class="modal-category-icon">💾</span>
+        <h3 class="modal-category-title">Carregando salvamentos...</h3>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(loading);
+
+  const snapshots = await getSnapshots();
+  loading.remove();
 
   const listHtml = snapshots.length === 0
     ? '<p class="saves-empty">Nenhum salvamento encontrado.<br>Os saves são criados automaticamente quando algo muda no jogo.</p>'
@@ -1684,15 +1700,16 @@ function openSavesPopup() {
   popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
 
   // Manual save
-  popup.querySelector('#saves-btn-manual').addEventListener('click', () => {
+  popup.querySelector('#saves-btn-manual').addEventListener('click', async () => {
     createSnapshot('Salvamento manual');
     popup.remove();
-    openSavesPopup();
+    // Small delay so server has time to save
+    setTimeout(() => openSavesPopup(), 600);
   });
 
   // Restore
   popup.querySelectorAll('.save-btn-restore').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const id = e.currentTarget.dataset.id;
       const snapshot = snapshots.find(s => s.id === id);
       if (!snapshot) return;
@@ -1701,9 +1718,7 @@ function openSavesPopup() {
       );
       if (!confirmed) return;
 
-      // Auto-save current state before restoring
-      createSnapshot('Backup antes de restauração');
-      restoreSnapshot(id);
+      await restoreSnapshot(id);
       popup.remove();
       renderDashboard();
       window.alert('Save restaurado com sucesso! 🔄');
@@ -1712,10 +1727,10 @@ function openSavesPopup() {
 
   // Delete
   popup.querySelectorAll('.save-btn-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       const id = e.currentTarget.dataset.id;
       if (window.confirm('Excluir este salvamento?')) {
-        deleteSnapshot(id);
+        await deleteSnapshot(id);
         popup.remove();
         openSavesPopup();
       }
