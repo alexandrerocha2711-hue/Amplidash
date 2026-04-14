@@ -4,14 +4,18 @@
 
 import {
   addParticipant,
+  createSnapshot,
+  deleteSnapshot,
   getCategorizedRankings,
   getParticipantsData,
+  getSnapshots,
   getSourceInfo,
   getWeeklyFactHistory,
   loadParticipantsData,
   persistVotingSession,
   recordWeeklyFactHistory,
   removeParticipant,
+  restoreSnapshot,
   resetAllScores,
   updateParticipantObjectives,
 } from './data.js';
@@ -464,7 +468,9 @@ function startManageParticipantsFlow() {
 export async function handleRemoveParticipant(id) {
   const confirmMsg = 'Tem certeza que deseja excluir permanentemente este participante? As pontuações dele(a) serão apagadas.';
   if (window.confirm(confirmMsg)) {
+    const name = getParticipantsData().find(p => p.id === id)?.name || id;
     removeParticipant(id);
+    createSnapshot(`Participante removido: ${name}`);
     renderManagementStep();
     renderDashboard();
   }
@@ -714,6 +720,7 @@ async function handleMgmtNext() {
       },
     });
 
+    createSnapshot('Fato da semana registrado');
     $('#management-modal').style.display = 'none';
     renderDashboard();
     return;
@@ -743,6 +750,7 @@ async function handleMgmtNext() {
       
       if (mgmtStep === MGMT_CATEGORIES.length) {
         addParticipant(mgmtData);
+        createSnapshot(`Participante adicionado: ${mgmtData.name}`);
         $('#management-modal').style.display = 'none';
         refreshDashboard();
       } else {
@@ -793,6 +801,7 @@ async function handleResetScores() {
   setButtonBusy(resetButton, true, 'Zerando...');
 
   await resetAllScores();
+  createSnapshot('Pontuação zerada');
   renderDashboard();
 
   setButtonBusy(startButton, false, 'Zerando...');
@@ -1244,6 +1253,8 @@ async function finishVotingSystem() {
     voteDate: new Date().toISOString(),
   });
 
+  createSnapshot('Votação finalizada');
+
   $('#voting-modal').style.display = 'none';
   renderDashboard();
 
@@ -1522,6 +1533,8 @@ function handleGoalsNext() {
   }
 
   updateParticipantObjectives(goalsSelectedParticipantId, objectives);
+  const pName = getParticipantsData().find(p => p.id === goalsSelectedParticipantId)?.name || '';
+  createSnapshot(`Metas atualizadas: ${pName}`);
   $('#goals-modal').style.display = 'none';
   renderDashboard();
   window.alert('Suas metas foram salvas com sucesso! 🎯');
@@ -1596,3 +1609,118 @@ function showParticipantGoals(participantId) {
 }
 
 window.showParticipantGoals = showParticipantGoals;
+
+// ===========================================================================
+// Saves / Snapshots Popup
+// ===========================================================================
+
+function openSavesPopup() {
+  // Remove existing if any
+  const existing = $('#saves-popup');
+  if (existing) existing.remove();
+
+  const snapshots = getSnapshots();
+
+  const listHtml = snapshots.length === 0
+    ? '<p class="saves-empty">Nenhum salvamento encontrado.<br>Os saves são criados automaticamente quando algo muda no jogo.</p>'
+    : snapshots.map(s => {
+        const date = new Date(s.timestamp);
+        const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const pCount = s.participants?.length || 0;
+
+        return `
+          <div class="save-item">
+            <div class="save-item-left">
+              <div class="save-item-icon">💾</div>
+              <div class="save-item-info">
+                <div class="save-item-desc">${escapeHtml(s.description)}</div>
+                <div class="save-item-meta">${dateStr} às ${timeStr} · ${pCount} participantes</div>
+              </div>
+            </div>
+            <div class="save-item-actions">
+              <button class="save-btn-restore" data-id="${s.id}" title="Restaurar este save">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                Restaurar
+              </button>
+              <button class="save-btn-delete" data-id="${s.id}" title="Excluir save">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+  const popup = document.createElement('div');
+  popup.id = 'saves-popup';
+  popup.className = 'modal-backdrop';
+  popup.style.display = 'flex';
+  popup.innerHTML = `
+    <div class="modal-card saves-popup-card">
+      <button class="modal-close-btn" id="saves-popup-close">×</button>
+
+      <div class="modal-header">
+        <span class="modal-category-icon">💾</span>
+        <h3 class="modal-category-title">Salvamentos</h3>
+        <p style="font-size: 0.85rem; opacity: 0.6; margin-top: 2px;">${snapshots.length} save${snapshots.length !== 1 ? 's' : ''} encontrado${snapshots.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      <div class="modal-body saves-popup-body">
+        <button class="save-btn-manual" id="saves-btn-manual">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Criar save manual agora
+        </button>
+        <div class="saves-list">
+          ${listHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  // Close
+  popup.querySelector('#saves-popup-close').addEventListener('click', () => popup.remove());
+  popup.addEventListener('click', (e) => { if (e.target === popup) popup.remove(); });
+
+  // Manual save
+  popup.querySelector('#saves-btn-manual').addEventListener('click', () => {
+    createSnapshot('Salvamento manual');
+    popup.remove();
+    openSavesPopup();
+  });
+
+  // Restore
+  popup.querySelectorAll('.save-btn-restore').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      const snapshot = snapshots.find(s => s.id === id);
+      if (!snapshot) return;
+      const confirmed = window.confirm(
+        `Restaurar o save de "${snapshot.description}"?\n\nIsso vai substituir todos os dados atuais pelo estado desse salvamento.`
+      );
+      if (!confirmed) return;
+
+      // Auto-save current state before restoring
+      createSnapshot('Backup antes de restauração');
+      restoreSnapshot(id);
+      popup.remove();
+      renderDashboard();
+      window.alert('Save restaurado com sucesso! 🔄');
+    });
+  });
+
+  // Delete
+  popup.querySelectorAll('.save-btn-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.dataset.id;
+      if (window.confirm('Excluir este salvamento?')) {
+        deleteSnapshot(id);
+        popup.remove();
+        openSavesPopup();
+      }
+    });
+  });
+}
+
+window.openSavesPopup = openSavesPopup;

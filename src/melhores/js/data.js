@@ -401,3 +401,85 @@ export function getCategorizedRankings() {
     geral: sortBy(withCurrentTotals, 'totalPoints'),
   };
 }
+
+// ===========================================================================
+// Snapshot / Save System
+// ===========================================================================
+
+const SNAPSHOTS_STORAGE_KEY = 'amplify_melhores_saves_v1';
+const MAX_SNAPSHOTS = 50;
+
+function readSnapshots() {
+  if (!isStorageAvailable()) return [];
+  try {
+    const raw = window.localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSnapshots(snapshots) {
+  if (!isStorageAvailable()) return;
+  try {
+    window.localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
+  } catch {}
+}
+
+/**
+ * Creates a snapshot of the current game state.
+ */
+export function createSnapshot(description = 'Salvamento manual') {
+  const snapshots = readSnapshots();
+
+  const snapshot = {
+    id: `save_${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    description,
+    participants: JSON.parse(JSON.stringify(participantState)),
+    weeklyFactHistory: JSON.parse(JSON.stringify(weeklyFactHistory)),
+  };
+
+  snapshots.unshift(snapshot); // newest first
+
+  // Limit to MAX_SNAPSHOTS
+  if (snapshots.length > MAX_SNAPSHOTS) {
+    snapshots.length = MAX_SNAPSHOTS;
+  }
+
+  writeSnapshots(snapshots);
+  return snapshot;
+}
+
+/**
+ * Returns all saved snapshots (newest first).
+ */
+export function getSnapshots() {
+  return readSnapshots();
+}
+
+/**
+ * Restores the game state from a snapshot.
+ */
+export function restoreSnapshot(snapshotId) {
+  const snapshots = readSnapshots();
+  const snapshot = snapshots.find((s) => s.id === snapshotId);
+  if (!snapshot) return false;
+
+  participantState = withTotals(snapshot.participants || []);
+  weeklyFactHistory = snapshot.weeklyFactHistory || [];
+
+  writeStoredState(participantState);
+  writeStoredWeeklyFactHistory(weeklyFactHistory);
+
+  return true;
+}
+
+/**
+ * Deletes a snapshot by ID.
+ */
+export function deleteSnapshot(snapshotId) {
+  const snapshots = readSnapshots();
+  const filtered = snapshots.filter((s) => s.id !== snapshotId);
+  writeSnapshots(filtered);
+}
