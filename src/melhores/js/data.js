@@ -1,5 +1,14 @@
 /**
  * data.js — Local-only state management (/melhores)
+ *
+ * REGRA DE OURO: O localStorage é a fonte da verdade.
+ * Quando o usuário já tem dados salvos, NENHUMA propriedade numérica
+ * (categories, scoreBreakdown) nem textual (objectives) é sobrescrita.
+ * Apenas metadados visuais (name, handle, photoUrl) são preenchidos
+ * caso estejam ausentes, usando os valores padrão como fallback.
+ *
+ * A única maneira de zerar os dados é o botão "Zerar pontuação"
+ * que chama resetAllScores().
  */
 
 import { calculateTotalScores } from './utils.js';
@@ -11,7 +20,10 @@ const REMOVED_PARTICIPANT_IDS = new Set(['vitor']);
 const PARTICIPANT_DEFAULTS_BY_ID = new Map(
   INITIAL_PARTICIPANTS_DATA.map((participant) => [participant.id, participant]),
 );
-const INITIAL_WEEKLY_FACT_HISTORY = [];
+
+// ---------------------------------------------------------------------------
+// LocalStorage helpers
+// ---------------------------------------------------------------------------
 
 function isStorageAvailable() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -57,6 +69,10 @@ function writeStoredWeeklyFactHistory(entries) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Pure helpers (never mutate storage)
+// ---------------------------------------------------------------------------
+
 function withTotals(participants) {
   return participants.map((participant) => ({
     ...participant,
@@ -64,9 +80,15 @@ function withTotals(participants) {
   }));
 }
 
+/**
+ * Garante que todo participante do INITIAL_PARTICIPANTS_DATA exista no array,
+ * e preenche APENAS metadados visuais (name, handle, photoUrl) caso estejam
+ * ausentes. Categorias, objetivos e scoreBreakdown NUNCA são tocados aqui.
+ */
 function normalizeParticipantMetadata(participants) {
   const existingIds = new Set(participants.map(p => p.id));
-  
+
+  // Adiciona participantes que existem nos padrões mas não estão no state salvo
   for (const [id, defaultData] of PARTICIPANT_DEFAULTS_BY_ID.entries()) {
     if (!existingIds.has(id) && !REMOVED_PARTICIPANT_IDS.has(id)) {
       participants.push(cloneParticipants([defaultData])[0]);
@@ -76,21 +98,23 @@ function normalizeParticipantMetadata(participants) {
   return participants
     .filter((participant) => !REMOVED_PARTICIPANT_IDS.has(participant.id))
     .map((participant) => {
-    const defaults = PARTICIPANT_DEFAULTS_BY_ID.get(participant.id);
+      const defaults = PARTICIPANT_DEFAULTS_BY_ID.get(participant.id);
 
-    if (!defaults) {
+      if (!defaults) {
+        // Participante adicionado manualmente, sem defaults — manter tudo intacto
+        return {
+          ...participant,
+          photoUrl: participant.photoUrl || null,
+        };
+      }
+
+      // Preencher APENAS campos visuais ausentes — nunca sobrescrever dados do jogo
       return {
         ...participant,
-        photoUrl: participant.photoUrl || null,
+        name: participant.name || defaults.name,
+        handle: participant.handle || defaults.handle,
+        photoUrl: participant.photoUrl ?? defaults.photoUrl ?? null,
       };
-    }
-
-    return {
-      ...participant,
-      name: participant.name || defaults.name,
-      handle: participant.handle || defaults.handle,
-      photoUrl: participant.photoUrl ?? defaults.photoUrl ?? null,
-    };
     });
 }
 
@@ -104,9 +128,7 @@ function hasMeaningfulFactDescription(value) {
 }
 
 function normalizeWeeklyFactHistory(entries) {
-  const mergedEntriesById = new Map(
-    INITIAL_WEEKLY_FACT_HISTORY.map((entry) => [entry.id, cloneParticipants([entry])[0]]),
-  );
+  const mergedEntriesById = new Map();
 
   for (const entry of entries || []) {
     if (!entry?.id) continue;
@@ -134,37 +156,28 @@ function normalizeWeeklyFactHistory(entries) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-// Initial hydration: try storage, then fallback to INITIAL_PARTICIPANTS_DATA
+// ---------------------------------------------------------------------------
+// Initial hydration — localStorage is the single source of truth
+// ---------------------------------------------------------------------------
+
 let participantState = readStoredState();
 
 if (!participantState) {
+  // Primeiro acesso: inicializa com os dados padrão
   participantState = cloneParticipants(INITIAL_PARTICIPANTS_DATA);
 }
 
-// HOTFIX: Force overwrite objectives for Bruno and Gabriel, and force sync categories/scoreBreakdown for all
-participantState = participantState.map((participant) => {
-  const defaults = PARTICIPANT_DEFAULTS_BY_ID.get(participant.id);
-  if (defaults) {
-    const isOverrideObjectives = participant.id === 'bruno' || participant.id === 'gabriel';
-    return {
-      ...participant,
-      categories: { ...defaults.categories },
-      scoreBreakdown: { ...defaults.scoreBreakdown },
-      objectives: isOverrideObjectives ? { ...defaults.objectives } : participant.objectives
-    };
-  }
-  return participant;
-});
-
+// Apenas preenche metadados visuais e adiciona participantes novos
 participantState = normalizeParticipantMetadata(participantState);
 participantState = withTotals(participantState);
 writeStoredState(participantState);
 
+// Fatos da semana — carrega do storage, nunca apaga automaticamente
 let weeklyFactHistory = normalizeWeeklyFactHistory(readStoredWeeklyFactHistory() || []);
 
-// HOTFIX: Wipe localStorage weekly facts completely as requested
-weeklyFactHistory = [];
-writeStoredWeeklyFactHistory(weeklyFactHistory);
+// ---------------------------------------------------------------------------
+// Public API — leitura
+// ---------------------------------------------------------------------------
 
 export function getParticipantsData() {
   return participantState;
@@ -183,7 +196,6 @@ export function getWeeklyFactHistory() {
 }
 
 export async function loadParticipantsData() {
-  // Always returns the current in-memory state
   return {
     participants: participantState,
     weeklyFactHistory,
@@ -191,6 +203,14 @@ export async function loadParticipantsData() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Public API — escrita (todas salvam no localStorage imediatamente)
+// ---------------------------------------------------------------------------
+
+/**
+ * Persiste os resultados de uma sessão de votação.
+ * Soma os pontos ao estado existente e salva.
+ */
 export async function persistVotingSession({ sessionResults, bestWinnerId, worstWinnerId }) {
   participantState = participantState.map((participant) => {
     const result = sessionResults[participant.id] || {};
@@ -213,7 +233,6 @@ export async function persistVotingSession({ sessionResults, bestWinnerId, worst
       scoreBreakdown.piorFato = (scoreBreakdown.piorFato || 0) - 1;
     }
 
-    // bestWeek category is the sum of MF and PF
     categories.bestWeek = (scoreBreakdown.melhorFato || 0) + (scoreBreakdown.piorFato || 0);
 
     return {
@@ -233,6 +252,9 @@ export async function persistVotingSession({ sessionResults, bestWinnerId, worst
   };
 }
 
+/**
+ * Registra um fato semanal (melhor + pior) no histórico e salva.
+ */
 export function recordWeeklyFactHistory(entry) {
   const normalizedEntry = {
     id: entry.id || entry.date,
@@ -255,13 +277,16 @@ export function recordWeeklyFactHistory(entry) {
   return weeklyFactHistory;
 }
 
-export function addParticipant({ name, handle, objectives }) {
+/**
+ * Adiciona um novo participante e salva imediatamente.
+ */
+export function addParticipant({ name, handle, photoUrl, objectives }) {
   const id = name.toLowerCase().replace(/\s+/g, '-');
   const newParticipant = {
     id,
     name,
     handle: handle.startsWith('@') ? handle : `@${handle}`,
-    photoUrl: null,
+    photoUrl: photoUrl || null,
     categories: {
       exercicio: 0,
       familia: 0,
@@ -288,6 +313,18 @@ export function addParticipant({ name, handle, objectives }) {
   return participantState;
 }
 
+/**
+ * Remove um participante e salva imediatamente.
+ */
+export function removeParticipant(id) {
+  participantState = participantState.filter((p) => p.id !== id);
+  writeStoredState(participantState);
+  return participantState;
+}
+
+/**
+ * Atualiza os objetivos de um participante e salva imediatamente.
+ */
 export function updateParticipantObjectives(id, objectives) {
   participantState = participantState.map((p) => {
     if (p.id !== id) return p;
@@ -303,15 +340,39 @@ export function updateParticipantObjectives(id, objectives) {
   return participantState;
 }
 
+/**
+ * ZERAR PONTUAÇÃO — a ÚNICA função que apaga dados do jogo.
+ * Mantém os participantes (nome, handle, foto), mas zera tudo mais.
+ */
 export async function resetAllScores() {
-  participantState = INITIAL_PARTICIPANTS_DATA.map(p => ({
-    ...cloneParticipants([p])[0],
-    categories: { ...p.categories },
-    scoreBreakdown: { ...p.scoreBreakdown }
+  participantState = participantState.map(p => ({
+    ...p,
+    categories: {
+      exercicio: 0,
+      familia: 0,
+      alimentacao: 0,
+      hobbies: 0,
+      conhecimentos: 0,
+      bestWeek: 0,
+    },
+    objectives: {
+      exercicio: '',
+      familia: '',
+      alimentacao: '',
+      hobbies: '',
+      conhecimentos: '',
+    },
+    scoreBreakdown: {
+      melhorFato: 0,
+      piorFato: 0,
+    }
   }));
 
   participantState = withTotals(participantState);
   writeStoredState(participantState);
+
+  weeklyFactHistory = [];
+  writeStoredWeeklyFactHistory(weeklyFactHistory);
 
   return {
     participants: participantState,

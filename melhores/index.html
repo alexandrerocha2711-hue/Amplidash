@@ -51,9 +51,51 @@
             </button>
             <div class="dropdown-content" id="manage-dropdown">
               <button id="add-voter-btn">➕ Adicionar novo participante</button>
+              <button id="manage-participants-btn">🗑️ Gerenciar participantes</button>
               <button id="add-weekly-fact-btn">📝 Adicionar melhor e pior fato da semana</button>
+              <button id="toggle-goals-btn">🎯 Abrir/Fechar janela de metas</button>
               <button id="new-cycle-btn">🚀 Iniciar novo melhores</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Countdown Banner -->
+      <div class="countdown-banner" id="countdown-banner">
+        <div class="countdown-inner">
+          <div class="countdown-left">
+            <div class="countdown-icon">🎯</div>
+            <div class="countdown-copy">
+              <div class="countdown-title">Registro de metas</div>
+              <div class="countdown-subtitle" id="countdown-status">Aberto — encerra em 22/04 às 23:59</div>
+            </div>
+          </div>
+          <div class="countdown-center">
+            <div class="countdown-block">
+              <span class="countdown-value" id="cd-days">00</span>
+              <span class="countdown-label">dias</span>
+            </div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-block">
+              <span class="countdown-value" id="cd-hours">00</span>
+              <span class="countdown-label">horas</span>
+            </div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-block">
+              <span class="countdown-value" id="cd-mins">00</span>
+              <span class="countdown-label">min</span>
+            </div>
+            <span class="countdown-sep">:</span>
+            <div class="countdown-block">
+              <span class="countdown-value" id="cd-secs">00</span>
+              <span class="countdown-label">seg</span>
+            </div>
+          </div>
+          <div class="countdown-right">
+            <button id="add-goals-btn" class="btn btn-goals-action" disabled>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Registrar metas
+            </button>
           </div>
         </div>
       </div>
@@ -204,6 +246,161 @@
     </div>
   </footer>
 
+  <!-- Floating Rules Button (FAB) -->
+  <button class="rules-fab" id="rules-fab" onclick="document.getElementById('rules-popup').style.display='flex'">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15z"/>
+    </svg>
+    <span class="rules-fab-label">Regras</span>
+  </button>
+
+  <!-- Rules Popup -->
+  <div id="rules-popup" class="modal-backdrop" style="display: none;" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal-card rules-popup-card">
+      <button class="modal-close-btn" onclick="document.getElementById('rules-popup').style.display='none'">×</button>
+
+      <div class="modal-header">
+        <span class="modal-category-icon">📖</span>
+        <h3 class="modal-category-title">Os 10 Mandamentos</h3>
+        <p style="font-size: 0.85rem; opacity: 0.6; margin-top: 2px;">Best of the Week 🏆</p>
+      </div>
+
+      <div class="modal-body rules-popup-body">
+        <div class="rules-list">
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">1</span>
+              <h3 class="rule-title">Meta boa é meta que dá uma preguiça só de pensar</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>Se a meta não te desafia, ela não serve pro game.</p>
+              <p>A ideia do Best of the Week é te fazer evoluir de verdade, sair do automático e vencer as desculpas esfarrapadas que sua cabeça inventa. Meta fácil demais é passeio no parque, e aqui a proposta é crescimento.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">2</span>
+              <h3 class="rule-title">Sextou com presença obrigatória</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>O evento de sexta-feira é <strong>obrigatório</strong>.</p>
+              <p>Faltou? Seus pontos da semana vão de arrasta pra baixo e zeram automaticamente.</p>
+              <p><strong>Importante:</strong> se você já pontuou em semanas anteriores, essa pontuação continua. O prejuízo é só na semana atual mesmo. Já dói bastante.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">3</span>
+              <h3 class="rule-title">Não cadastrou meta no prazo? Dançou</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>Se o participante não registrar as metas até a data final definida no <strong>PE</strong>, fica de fora até o próximo reinício do game.</p>
+              <p>Além disso, não poderá participar dos eventos do The Best e ainda poderá receber uma punição avaliada pela diretoria.</p>
+              <p><strong>Mas calma:</strong> imprevistos acontecem. Se tiver um motivo plausível, troca uma ideia com a diretoria. O caos é aceito, o sumiço misterioso não.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">4</span>
+              <h3 class="rule-title">Reciclagem de meta? Aqui não é coleta seletiva</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>É proibido repetir metas de um Best para o outro.</p>
+              <p>A regra é clara: <strong>meta nova, evolução nova</strong>.</p>
+              <p>A única exceção são metas que foram <strong>completamente zeradas</strong> no Best anterior. Aí sim faz sentido tentar de novo e buscar redenção.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">5</span>
+              <h3 class="rule-title">"Melhor da semana" e "pior da semana" não são espaço pra enrolação</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>Essas categorias são extremamente restritas a acontecimentos <strong>reais, específicos e relevantes</strong>.</p>
+              <p>Nada de meter um "foi tudo bem" no melhor e um "a semana foi corrida" no pior.</p>
+              <p>Se um for muito bom e o outro for genérico, <strong>os dois podem ser desconsiderados</strong>. Aqui a gente valoriza contexto, não freestyle.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">6</span>
+              <h3 class="rule-title">Um acontecimento só. Sem combo.</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>As categorias <strong>"Melhor da semana"</strong> e <strong>"Pior da semana"</strong> aceitam <strong>apenas um acontecimento cada</strong>.</p>
+              <p>Não vale fazer um pack de emoções, uma retrospectiva do Fantástico ou um compilado da sua semana. Escolha <strong>um</strong> fato e sustente sua escolha.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">7</span>
+              <h3 class="rule-title">Trabalho não entra nessa conta</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>O Best of the Week existe para incentivar evolução <strong>pessoal</strong>.</p>
+              <p>Por isso, os acontecimentos de "Melhor da semana" e "Pior da semana" <strong>não podem estar relacionados ao trabalho</strong>.</p>
+              <p>Aqui o foco é sua vida fora do job. O burnout já tem palco demais.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">8</span>
+              <h3 class="rule-title">O VAR está sempre vendo</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>Todas as metas serão avaliadas pela comissão do <strong>VAR</strong>, que tem como missão deixar a competição <strong>justa, equilibrada e amigável</strong>.</p>
+              <p>Então sim: tem análise. Tem critério. E tem gente olhando com carinho e com senso de justiça.</p>
+              <p>Reclamar do VAR faz parte da experiência, mas respeitar o VAR também.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">9</span>
+              <h3 class="rule-title">Fez pela metade? Então não fez.</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>Para qualquer meta ser contabilizada, ela precisa ser <strong>100% cumprida</strong>.</p>
+              <p>"Ah, mas eu quase consegui..."</p>
+              <p>Quase no Best é igual a não cumpriu. Aqui não existe meia meta, meio check ou troféu por intenção. Ou bateu, ou não bateu.</p>
+            </div>
+          </div>
+
+          <div class="rule-card" onclick="this.classList.toggle('rule-open')">
+            <div class="rule-header">
+              <span class="rule-num">10</span>
+              <h3 class="rule-title">Nada está escrito em pedra</h3>
+              <span class="rule-toggle">+</span>
+            </div>
+            <div class="rule-body">
+              <p>O Best of the Week quer evoluir sempre.</p>
+              <p>Então seu feedback é bem-vindo, importante e necessário. Se você enxergou algo que pode melhorar, <strong>fala</strong>.</p>
+              <p>A única coisa pior que uma regra ruim é uma regra ruim que ninguém teve coragem de comentar.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Voting Modal -->
   <div id="voting-modal" class="modal-backdrop" style="display: none;">
     <div class="modal-card">
@@ -334,6 +531,29 @@
       <div class="modal-actions" id="management-actions">
         <button class="btn btn-secondary" id="management-btn-back" style="display: none;">Voltar</button>
         <button class="btn btn-primary" id="management-btn-next">Próximo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Goals Modal (Adicionar minhas metas) -->
+  <div id="goals-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-card goals-modal-card">
+      <button class="modal-close-btn" id="goals-close-btn">×</button>
+      
+      <div class="modal-header">
+        <span class="modal-category-icon" id="goals-modal-icon">🎯</span>
+        <h3 class="modal-category-title" id="goals-modal-title">Adicionar minhas metas</h3>
+      </div>
+      
+      <div class="modal-body goals-modal-body">
+        <div id="goals-modal-content">
+          <!-- Dynamic: tutorial or form -->
+        </div>
+      </div>
+
+      <div class="modal-actions" id="goals-modal-actions">
+        <button class="btn btn-secondary" id="goals-btn-back" style="display: none;">Voltar</button>
+        <button class="btn btn-primary" id="goals-btn-next">Começar a registrar minhas metas</button>
       </div>
     </div>
   </div>

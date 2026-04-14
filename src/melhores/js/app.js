@@ -3,6 +3,7 @@
  */
 
 import {
+  addParticipant,
   getCategorizedRankings,
   getParticipantsData,
   getSourceInfo,
@@ -10,7 +11,9 @@ import {
   loadParticipantsData,
   persistVotingSession,
   recordWeeklyFactHistory,
+  removeParticipant,
   resetAllScores,
+  updateParticipantObjectives,
 } from './data.js';
 import { getInitials } from './utils.js';
 import { CATEGORY_DEFINITIONS } from './shared.js';
@@ -320,10 +323,12 @@ function renderCategory(containerId, sortedData) {
       return `
         <div class="podium-item">
           <div class="item-rank ${rank <= 3 ? `rank-${rank}` : ''}">${rank}º</div>
-          ${buildAvatarMarkup(person, 'item-avatar')}
-          <div class="item-info">
-            <div class="item-name">${person.name}</div>
-            <div class="item-handle">${person.handle}</div>
+          <div class="podium-clickable" onclick="window.showParticipantGoals('${escapeHtml(person.id)}')">
+            ${buildAvatarMarkup(person, 'item-avatar')}
+            <div class="item-info">
+              <div class="item-name">${person.name}</div>
+              <div class="item-handle">${person.handle}</div>
+            </div>
           </div>
           <div class="item-score">${points} pts</div>
         </div>
@@ -346,7 +351,7 @@ function renderGeneralRanking(generalData) {
             <span class="rank-badge ${rank <= 3 ? `rank-${rank}` : ''}">${rank}</span>
           </td>
           <td>
-            <div class="creator-cell">
+            <div class="creator-cell creator-cell-clickable" onclick="window.showParticipantGoals('${escapeHtml(participant.id)}')">
               ${buildAvatarMarkup(participant, 'creator-avatar')}
               <div>
                 <div class="creator-name">${participant.name}</div>
@@ -384,13 +389,26 @@ function bindVotingEvents() {
 
   // Management Events
   $('#manage-dropdown #add-voter-btn')?.addEventListener('click', startAddParticipantFlow);
+  $('#manage-dropdown #manage-participants-btn')?.addEventListener('click', startManageParticipantsFlow);
   $('#manage-dropdown #add-weekly-fact-btn')?.addEventListener('click', startAddWeeklyFactFlow);
   $('#manage-dropdown #new-cycle-btn')?.addEventListener('click', startNewCycleFlow);
+  $('#manage-dropdown #toggle-goals-btn')?.addEventListener('click', toggleGoalsWindow);
   $('#management-close-btn')?.addEventListener('click', () => {
     $('#management-modal').style.display = 'none';
   });
   $('#management-btn-back')?.addEventListener('click', handleMgmtBack);
   $('#management-btn-next')?.addEventListener('click', handleMgmtNext);
+
+  // Goals Modal Events
+  $('#add-goals-btn')?.addEventListener('click', openGoalsModal);
+  $('#goals-close-btn')?.addEventListener('click', () => {
+    $('#goals-modal').style.display = 'none';
+  });
+  $('#goals-btn-back')?.addEventListener('click', handleGoalsBack);
+  $('#goals-btn-next')?.addEventListener('click', handleGoalsNext);
+
+  // Initialize goals countdown timer
+  startGoalsCountdown();
 }
 
 // Management Flow State
@@ -424,13 +442,35 @@ function setManagementModalVariant(variant = 'default') {
 function startAddParticipantFlow() {
   mgmtFlow = 'ADD_PARTICIPANT';
   mgmtStep = 0;
-  mgmtData = { name: '', handle: '', objectives: {} };
+  mgmtData = { name: '', handle: '', photoUrl: '', objectives: {} };
   
   $('#management-modal').style.display = 'flex';
   $('#management-title').textContent = 'Adicionar Participante';
   $('#management-icon').textContent = '👤';
   renderManagementStep();
 }
+
+function startManageParticipantsFlow() {
+  mgmtFlow = 'MANAGE_PARTICIPANTS';
+  mgmtStep = 0;
+  mgmtData = {};
+
+  $('#management-modal').style.display = 'flex';
+  $('#management-title').textContent = 'Gerenciar Participantes';
+  $('#management-icon').textContent = '🗑️';
+  renderManagementStep();
+}
+
+export async function handleRemoveParticipant(id) {
+  const confirmMsg = 'Tem certeza que deseja excluir permanentemente este participante? As pontuações dele(a) serão apagadas.';
+  if (window.confirm(confirmMsg)) {
+    removeParticipant(id);
+    renderManagementStep();
+    renderDashboard();
+  }
+}
+// Torna global para que o onclick= inline funcione
+window.handleRemoveParticipant = handleRemoveParticipant;
 
 function startAddWeeklyFactFlow() {
   mgmtFlow = 'ADD_WEEKLY_FACT';
@@ -473,7 +513,35 @@ function renderManagementStep() {
 
   setManagementModalVariant(mgmtFlow === 'ADD_WEEKLY_FACT' ? 'weekly-fact' : 'default');
   btnBack.style.display = mgmtStep > 0 ? 'flex' : 'none';
+  btnNext.style.display = mgmtFlow === 'MANAGE_PARTICIPANTS' ? 'none' : 'flex';
   btnNext.textContent = 'Próximo';
+
+  if (mgmtFlow === 'MANAGE_PARTICIPANTS') {
+    const participants = getParticipantsData().sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    
+    if (participants.length === 0) {
+      content.innerHTML = '<p style="text-align: center; padding: 20px; opacity: 0.7;">Nenhum participante cadastrado.</p>';
+      return;
+    }
+
+    content.innerHTML = `
+      <div class="mgmt-participants-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; padding-right: 8px;">
+        ${participants.map((p) => `
+          <div class="mgmt-participant-item" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              ${buildAvatarMarkup(p, 'item-avatar', getInitials(p.name))}
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 500;">${escapeHtml(p.name)}</span>
+                <span style="font-size: 0.8rem; opacity: 0.6;">${escapeHtml(p.handle)}</span>
+              </div>
+            </div>
+            <button class="btn btn-danger-ghost btn-sm remove-participant-btn" onclick="window.handleRemoveParticipant('${escapeHtml(p.id)}')" style="padding: 6px 12px; font-size: 0.85rem; border-color: rgba(255,70,70,0.5); color: #ff5555;">Excluir</button>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    return;
+  }
 
   if (mgmtFlow === 'ADD_WEEKLY_FACT') {
     btnNext.textContent = 'Salvar fatos';
@@ -551,6 +619,10 @@ function renderManagementStep() {
         <div class="mgmt-form-group">
           <label>Handle (@usuario)</label>
           <input type="text" id="mgmt-handle" class="mgmt-input" placeholder="Ex: @joao" value="${mgmtData.handle}">
+        </div>
+        <div class="mgmt-form-group">
+          <label>Foto (Link Direto ou Google Drive)</label>
+          <input type="text" id="mgmt-photoUrl" class="mgmt-input" placeholder="Ex: https://drive.google.com/file/d/..." value="${mgmtData.photoUrl || ''}">
         </div>
       `;
     } else if (mgmtStep <= MGMT_CATEGORIES.length) {
@@ -651,6 +723,17 @@ async function handleMgmtNext() {
     if (mgmtStep === 0) {
       mgmtData.name = $('#mgmt-name').value.trim();
       mgmtData.handle = $('#mgmt-handle').value.trim();
+      
+      let rawPhotoUrl = $('#mgmt-photoUrl')?.value.trim() || '';
+      
+      // Convert GDrive links to the thumbnail format that works (same as existing participants)
+      const gDriveMatch = rawPhotoUrl.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/);
+      if (gDriveMatch && gDriveMatch[1]) {
+        rawPhotoUrl = `https://drive.google.com/thumbnail?id=${gDriveMatch[1]}&sz=w1000`;
+      }
+      
+      mgmtData.photoUrl = rawPhotoUrl;
+
       if (!mgmtData.name || !mgmtData.handle) return alert('Preencha os campos obrigatórios');
       mgmtStep++;
       renderManagementStep();
@@ -659,11 +742,9 @@ async function handleMgmtNext() {
       mgmtData.objectives[cat.key] = $('#mgmt-objective').value.trim();
       
       if (mgmtStep === MGMT_CATEGORIES.length) {
-        import('./data.js').then(m => {
-          m.addParticipant(mgmtData);
-          $('#management-modal').style.display = 'none';
-          refreshDashboard();
-        });
+        addParticipant(mgmtData);
+        $('#management-modal').style.display = 'none';
+        refreshDashboard();
       } else {
         mgmtStep++;
         renderManagementStep();
@@ -681,7 +762,7 @@ async function handleMgmtNext() {
 
     if (isLastCat && isLastParticipant) {
       for (const p of mgmtData.participants) {
-        import('./data.js').then(m => m.updateParticipantObjectives(p.id, p.objectives));
+        updateParticipantObjectives(p.id, p.objectives);
       }
       $('#management-modal').style.display = 'none';
       refreshDashboard();
@@ -1170,3 +1251,348 @@ async function finishVotingSystem() {
   finishButton.textContent = 'Finalizar Votação';
   modalCloseButton.disabled = false;
 }
+
+// ===========================================================================
+// Goals System — "Adicionar minhas metas"
+// ===========================================================================
+
+const GOALS_FORM_CATEGORIES = CATEGORY_DEFINITIONS.filter(c => c.key !== 'bestWeek');
+
+// Deadline: 22/04/2026 às 23:59:59 no horário de Brasília (UTC-3)
+const GOALS_DEADLINE = new Date('2026-04-23T02:59:59Z'); // 23:59:59 BRT = 02:59:59 UTC next day
+
+let goalsStep = 0; // 0 = tutorial, 1 = form
+let goalsSelectedParticipantId = '';
+let goalsCountdownInterval = null;
+
+function getGoalsTimeRemaining() {
+  const now = new Date();
+  const diff = GOALS_DEADLINE.getTime() - now.getTime();
+  if (diff <= 0) return null;
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  return { days, hours, minutes, seconds, total: diff };
+}
+
+function isGoalsWindowActive() {
+  return getGoalsTimeRemaining() !== null;
+}
+
+function formatCountdown(remaining) {
+  if (!remaining) return 'Encerrado';
+  const pad = (n) => String(n).padStart(2, '0');
+
+  if (remaining.days > 0) {
+    return `${remaining.days}d ${pad(remaining.hours)}h ${pad(remaining.minutes)}m`;
+  }
+  return `${pad(remaining.hours)}:${pad(remaining.minutes)}:${pad(remaining.seconds)}`;
+}
+
+function syncGoalsButtonState() {
+  const btn = $('#add-goals-btn');
+  const banner = $('#countdown-banner');
+  const statusEl = $('#countdown-status');
+  if (!btn) return;
+
+  const remaining = getGoalsTimeRemaining();
+  const active = remaining !== null;
+  const pad = (n) => String(n).padStart(2, '0');
+
+  btn.disabled = !active;
+
+  if (banner) {
+    banner.classList.toggle('countdown-active', active);
+    banner.classList.toggle('countdown-expired', !active);
+  }
+
+  if (active) {
+    const d = $('#cd-days');
+    const h = $('#cd-hours');
+    const m = $('#cd-mins');
+    const s = $('#cd-secs');
+    if (d) d.textContent = pad(remaining.days);
+    if (h) h.textContent = pad(remaining.hours);
+    if (m) m.textContent = pad(remaining.minutes);
+    if (s) s.textContent = pad(remaining.seconds);
+    if (statusEl) statusEl.textContent = 'Aberto — encerra em 22/04 às 23:59';
+  } else {
+    const d = $('#cd-days');
+    const h = $('#cd-hours');
+    const m = $('#cd-mins');
+    const s = $('#cd-secs');
+    if (d) d.textContent = '00';
+    if (h) h.textContent = '00';
+    if (m) m.textContent = '00';
+    if (s) s.textContent = '00';
+    if (statusEl) statusEl.textContent = 'Encerrado — prazo expirado';
+  }
+
+  // Auto-close modal if deadline passed
+  if (!active && $('#goals-modal')?.style.display === 'flex') {
+    $('#goals-modal').style.display = 'none';
+    window.alert('O prazo para adicionar metas foi encerrado!');
+  }
+}
+
+function startGoalsCountdown() {
+  syncGoalsButtonState();
+  if (goalsCountdownInterval) clearInterval(goalsCountdownInterval);
+  goalsCountdownInterval = setInterval(syncGoalsButtonState, 1000);
+}
+
+function toggleGoalsWindow() {
+  // Informational only now — deadline-based
+  const active = isGoalsWindowActive();
+  if (active) {
+    const remaining = getGoalsTimeRemaining();
+    window.alert(`A janela de metas está ABERTA!\n\nTempo restante: ${formatCountdown(remaining)}\n\nEncerra automaticamente em 22/04 às 23:59.`);
+  } else {
+    window.alert('A janela de metas está ENCERRADA.\n\nO prazo era até 22/04 às 23:59.');
+  }
+}
+
+function openGoalsModal() {
+  if (!isGoalsWindowActive()) return;
+  goalsStep = 0;
+  goalsSelectedParticipantId = '';
+  $('#goals-modal').style.display = 'flex';
+  renderGoalsStep();
+}
+
+function renderGoalsStep() {
+  const content = $('#goals-modal-content');
+  const btnBack = $('#goals-btn-back');
+  const btnNext = $('#goals-btn-next');
+
+  if (goalsStep === 0) {
+    // Tutorial
+    btnBack.style.display = 'none';
+    btnNext.textContent = 'Começar a registrar minhas metas';
+    $('#goals-modal-icon').textContent = '📋';
+    $('#goals-modal-title').textContent = 'Como registrar suas metas';
+
+    content.innerHTML = `
+      <div class="goals-tutorial">
+        <div class="goals-tutorial-step">
+          <div class="goals-tutorial-num">1</div>
+          <div class="goals-tutorial-text">
+            <strong>Selecione o seu nome</strong> na lista de participantes para que suas metas fiquem vinculadas a você.
+            <span class="goals-tutorial-example">Caso não ache seu perfil, volte à tela inicial e peça para ser adicionado como participante.</span>
+          </div>
+        </div>
+
+        <div class="goals-tutorial-step">
+          <div class="goals-tutorial-num">2</div>
+          <div class="goals-tutorial-text">
+            <strong>Seja específico</strong> na sua meta. Quanto mais claro, melhor para ser avaliado.
+            <span class="goals-tutorial-example">✅ Exercício: Fazer 5 treinos de musculação e/ou corrida na semana</span>
+          </div>
+        </div>
+
+        <div class="goals-tutorial-step">
+          <div class="goals-tutorial-num">3</div>
+          <div class="goals-tutorial-text">
+            <strong>Preencha todas as categorias.</strong> Se deixar alguma sem meta, ela vai contabilizar <strong>–2 pontos</strong> na soma da semana.
+          </div>
+        </div>
+
+        <div class="goals-tutorial-step">
+          <div class="goals-tutorial-num">4</div>
+          <div class="goals-tutorial-text">
+            As metas precisam ser <strong>claras, mensuráveis e semanais.</strong>
+            <span class="goals-tutorial-example goals-tutorial-bad">❌ Saúde: Começar na academia (não dá pra "começar" toda semana)</span>
+          </div>
+        </div>
+
+        <div class="goals-tutorial-step">
+          <div class="goals-tutorial-num">5</div>
+          <div class="goals-tutorial-text">
+            As metas devem ser <strong>desafiadoras.</strong> Se já faz parte da sua rotina, não é uma meta.
+          </div>
+        </div>
+
+        <div class="goals-tutorial-warn">
+          ⚠️ Você pode editar suas metas enquanto a janela estiver aberta.
+        </div>
+      </div>
+    `;
+  } else if (goalsStep === 1) {
+    // Form
+    btnBack.style.display = 'flex';
+    btnNext.textContent = 'Salvar metas';
+    $('#goals-modal-icon').textContent = '🎯';
+    $('#goals-modal-title').textContent = 'Registrar minhas metas';
+
+    const participants = [...getParticipantsData()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const selectedParticipant = participants.find(p => p.id === goalsSelectedParticipantId);
+
+    let headerHtml = '';
+    if (selectedParticipant) {
+      headerHtml = `
+        <div class="goals-form-header">
+          ${buildAvatarMarkup(selectedParticipant, 'item-avatar', getInitials(selectedParticipant.name))}
+          <div class="goals-form-header-info">
+            <span class="goals-form-header-name">${escapeHtml(selectedParticipant.name)}</span>
+            <span class="goals-form-header-handle">${escapeHtml(selectedParticipant.handle)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    const categoriesHtml = GOALS_FORM_CATEGORIES.map(cat => {
+      const currentValue = selectedParticipant?.objectives?.[cat.key] || '';
+      return `
+        <div class="goals-category-group">
+          <div class="goals-category-label">
+            <span class="goals-category-label-icon">${cat.icon}</span>
+            ${cat.title}
+          </div>
+          <textarea
+            class="goals-category-input"
+            id="goals-cat-${cat.key}"
+            placeholder="Ex: Meta semanal para ${cat.title}..."
+            ${!selectedParticipant ? 'disabled' : ''}
+          >${escapeHtml(currentValue)}</textarea>
+        </div>
+      `;
+    }).join('');
+
+    content.innerHTML = `
+      <div class="mgmt-form-group">
+        <label for="goals-participant-select">Selecione seu nome</label>
+        <select id="goals-participant-select" class="mgmt-input">
+          <option value="">Selecione um participante</option>
+          ${participants.map(p => `
+            <option value="${escapeHtml(p.id)}" ${p.id === goalsSelectedParticipantId ? 'selected' : ''}>
+              ${escapeHtml(p.name)}
+            </option>
+          `).join('')}
+        </select>
+      </div>
+      ${headerHtml}
+      ${selectedParticipant ? categoriesHtml : '<p style="text-align: center; opacity: 0.5; padding: 16px 0;">Selecione um participante acima para preencher as metas.</p>'}
+    `;
+
+    // Bind participant select change
+    $('#goals-participant-select')?.addEventListener('change', (e) => {
+      goalsSelectedParticipantId = e.target.value;
+      renderGoalsStep();
+    });
+  }
+}
+
+function handleGoalsBack() {
+  if (goalsStep > 0) {
+    goalsStep--;
+    renderGoalsStep();
+  }
+}
+
+function handleGoalsNext() {
+  if (goalsStep === 0) {
+    // Advance from tutorial to form
+    goalsStep = 1;
+    renderGoalsStep();
+    return;
+  }
+
+  // Save goals
+  if (!goalsSelectedParticipantId) {
+    window.alert('Selecione seu nome na lista de participantes antes de salvar.');
+    return;
+  }
+
+  const objectives = {};
+  let hasEmpty = false;
+  for (const cat of GOALS_FORM_CATEGORIES) {
+    const value = $(`#goals-cat-${cat.key}`)?.value.trim() || '';
+    objectives[cat.key] = value;
+    if (!value) hasEmpty = true;
+  }
+
+  if (hasEmpty) {
+    const proceed = window.confirm(
+      'Atenção! Você deixou uma ou mais categorias sem meta.\n\nCategorias sem meta contabilizam –2 pontos por semana.\n\nDeseja salvar mesmo assim?'
+    );
+    if (!proceed) return;
+  }
+
+  updateParticipantObjectives(goalsSelectedParticipantId, objectives);
+  $('#goals-modal').style.display = 'none';
+  renderDashboard();
+  window.alert('Suas metas foram salvas com sucesso! 🎯');
+}
+
+// ===========================================================================
+// Participant Profile Popup — click on name/avatar to see goals
+// ===========================================================================
+
+const PROFILE_CATEGORIES = CATEGORY_DEFINITIONS.filter(c => c.key !== 'bestWeek');
+
+function showParticipantGoals(participantId) {
+  const participant = getParticipantsData().find(p => p.id === participantId);
+  if (!participant) return;
+
+  // Remove existing popup if any
+  const existing = $('#participant-profile-popup');
+  if (existing) existing.remove();
+
+  const goalsHtml = PROFILE_CATEGORIES.map(cat => {
+    const value = participant.objectives?.[cat.key];
+    const hasGoal = value && String(value).trim() !== '';
+    return `
+      <div class="profile-goal-item ${hasGoal ? '' : 'profile-goal-empty'}">
+        <div class="profile-goal-header">
+          <span class="profile-goal-icon">${cat.icon}</span>
+          <span class="profile-goal-cat">${cat.title}</span>
+          <span class="profile-goal-pts">${participant.categories[cat.key]} pts</span>
+        </div>
+        <div class="profile-goal-text">${hasGoal ? escapeHtml(value) : 'Nenhuma meta registrada'}</div>
+      </div>
+    `;
+  }).join('');
+
+  const bestWeekPts = participant.categories.bestWeek;
+  const mf = participant.scoreBreakdown?.melhorFato || 0;
+  const pf = participant.scoreBreakdown?.piorFato || 0;
+
+  const popup = document.createElement('div');
+  popup.id = 'participant-profile-popup';
+  popup.className = 'modal-backdrop';
+  popup.style.display = 'flex';
+  popup.innerHTML = `
+    <div class="modal-card profile-popup-card">
+      <button class="modal-close-btn" id="profile-popup-close">×</button>
+
+      <div class="profile-popup-header">
+        ${buildAvatarMarkup(participant, 'profile-popup-avatar')}
+        <div class="profile-popup-name">${escapeHtml(participant.name)}</div>
+        <div class="profile-popup-handle">${escapeHtml(participant.handle)}</div>
+        <div class="profile-popup-points">
+          <span class="profile-popup-total">${participant.totalPoints} pts</span>
+          <span class="profile-popup-badge">🌟 BW: ${bestWeekPts} · MF: ${mf} · PF: ${pf}</span>
+        </div>
+      </div>
+
+      <div class="modal-body profile-popup-body">
+        <div class="profile-popup-section-title">Metas registradas</div>
+        <div class="profile-goals-list">
+          ${goalsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(popup);
+
+  popup.querySelector('#profile-popup-close').addEventListener('click', () => popup.remove());
+  popup.addEventListener('click', (e) => {
+    if (e.target === popup) popup.remove();
+  });
+}
+
+window.showParticipantGoals = showParticipantGoals;
