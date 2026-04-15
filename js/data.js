@@ -1,5 +1,12 @@
 /**
  * data.js — Google Sheets CSV fetching and parsing
+ *
+ * Two data sources:
+ * 1. SUMMARY sheet (gid=603715759): Creator list + posts + double (static totals)
+ * 2. REFERRALS sheet (gid=1587650016): Individual referral rows with dates
+ *
+ * Referrals are counted dynamically based on the selected time window,
+ * using column L (date DD/MM/YYYY) from the referrals sheet.
  */
 
 import { calculateScore } from './utils.js';
@@ -7,97 +14,78 @@ import { calculateScore } from './utils.js';
 // ==================================================================
 // CONFIGURATION
 // ==================================================================
-const SHEET_CSV_URL =
+const SUMMARY_CSV_URL =
     'https://docs.google.com/spreadsheets/d/1E8mcrg9b2diShYafCme0sy-SqMo3prf0/export?format=csv&gid=603715759';
 
-// Fallback sample data in case the sheet is not accessible
-const SAMPLE_DATA = [
-    { date: new Date().toISOString(), name: 'Sayonara', handle: '@euasay', referrals: 5, posts: 12, double: 3 },
-    { date: new Date(Date.now() - 86400000 * 10).toISOString(), name: 'Sayonara', handle: '@euasay', referrals: 2, posts: 5, double: 1 }, // 10 days ago
-    { date: new Date().toISOString(), name: 'Claudia Rolon', handle: '@clauargshop', referrals: 3, posts: 8, double: 5 },
-    { date: new Date().toISOString(), name: 'Nathalia Sausen', handle: '@nathesteta', referrals: 4, posts: 15, double: 2 },
-    { date: new Date().toISOString(), name: 'Vitória Vieira', handle: '@motivandovidas32', referrals: 2, posts: 20, double: 4 },
-];
+const REFERRALS_CSV_URL =
+    'https://docs.google.com/spreadsheets/d/1E8mcrg9b2diShYafCme0sy-SqMo3prf0/export?format=csv&gid=1587650016';
+
+// Double-point period (06/04 – 12/04)
+const DOUBLE_START = new Date(2026, 3, 6);  // April 6 (months are 0-indexed)
+const DOUBLE_END   = new Date(2026, 3, 12, 23, 59, 59);
+
+// ==================================================================
+// CSV Parsing Helpers
+// ==================================================================
 
 /**
- * Parse a CSV string into an array of raw creator entries
+ * Full CSV parser that handles:
+ * - Quoted fields with commas inside
+ * - Newlines inside quoted fields
+ * - Escaped double quotes ("")
+ * Returns an array of rows, each row is an array of string values.
  */
-function parseCSV(csv) {
-    const lines = csv.split(/\r?\n/).filter((line) => line.trim() !== '');
-
-    if (lines.length < 2) return [];
-
-    // Parse header to find column indices
-    const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-
-    const colMap = {
-        date: headers.findIndex(
-            (h) => h.includes('data') || h.includes('date') || h.includes('carimbo')
-        ),
-        name: headers.findIndex(
-            (h) => h.includes('nome') || h === 'name'
-        ),
-        handle: headers.findIndex(
-            (h) => h.includes('usuario') || h.includes('user') || h === '@usuario'
-        ),
-        posts: headers.findIndex(
-            (h) => h.includes('post') || h.includes('reels') || h.includes('tiktok')
-        ),
-        referrals: headers.findIndex(
-            (h) => h.includes('indica') || h.includes('referral')
-        ),
-        double: headers.findIndex(
-            (h) => h.includes('double') || h.includes('duplo')
-        ),
-    };
-
-    const rawEntries = [];
-
-    for (let i = 1; i < lines.length; i++) {
-        const cols = parseCSVLine(lines[i]);
-
-        // Skip empty rows
-        const name = colMap.name >= 0 ? cleanName(cols[colMap.name]) : '';
-        if (!name) continue;
-
-        const dateStr = colMap.date >= 0 ? (cols[colMap.date] || '').trim() : '';
-        const timestamp = parseDateBR(dateStr);
-        const handle = colMap.handle >= 0 ? (cols[colMap.handle] || '').trim() : '';
-        const posts = colMap.posts >= 0 ? parseNum(cols[colMap.posts]) : 0;
-        const referrals = colMap.referrals >= 0 ? parseNum(cols[colMap.referrals]) : 0;
-        const double = colMap.double >= 0 ? parseNum(cols[colMap.double]) : 0;
-
-        rawEntries.push({ timestamp, name, handle, posts, referrals, double });
-    }
-
-    return rawEntries;
-}
-
-/**
- * Parse a single CSV line handling quoted fields
- */
-function parseCSVLine(line) {
-    const result = [];
+function parseCSV(text) {
+    const rows = [];
     let current = '';
     let inQuotes = false;
+    let row = [];
 
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            result.push(current);
-            current = '';
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (inQuotes) {
+            if (char === '"') {
+                // Check for escaped quote ""
+                if (i + 1 < text.length && text[i + 1] === '"') {
+                    current += '"';
+                    i++; // skip next quote
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                current += char;
+            }
         } else {
-            current += char;
+            if (char === '"') {
+                inQuotes = true;
+            } else if (char === ',') {
+                row.push(current);
+                current = '';
+            } else if (char === '\r') {
+                // skip \r
+            } else if (char === '\n') {
+                row.push(current);
+                current = '';
+                rows.push(row);
+                row = [];
+            } else {
+                current += char;
+            }
         }
     }
-    result.push(current);
-    return result;
+
+    // Push final field and row
+    if (current || row.length > 0) {
+        row.push(current);
+        rows.push(row);
+    }
+
+    return rows;
 }
 
 /**
- * Clean creator name
+ * Clean creator name (remove invisible characters)
  */
 function cleanName(str) {
     if (!str) return '';
@@ -114,112 +102,254 @@ function parseNum(str) {
 }
 
 /**
- * Parse date string (DD/MM/YYYY or DD/MM/YYYY HH:MM:SS) to Unix timestamp
- * Fallback to current time if invalid
+ * Parse date string DD/MM/YYYY to a Date object.
+ * Returns null if invalid.
  */
-function parseDateBR(str) {
-    if (!str) return Date.now();
-    try {
-        // Handle "15/03/2026 14:30:00" or just "15/03/2026"
-        const [datePart] = str.split(' ');
-        const [day, month, year] = datePart.split('/');
-
-        if (day && month && year) {
-            // JS months are 0-indexed
-            const d = new Date(year, parseInt(month) - 1, day);
-            if (!isNaN(d.getTime())) {
-                return d.getTime();
-            }
-        }
-    } catch (e) { /* ignore */ }
-
-    // Fallback if parsing fails or formula format
-    const fallback = new Date(str);
-    return isNaN(fallback.getTime()) ? Date.now() : fallback.getTime();
+function parseDateDDMMYYYY(str) {
+    if (!str) return null;
+    const cleaned = str.trim();
+    const [day, month, year] = cleaned.split('/');
+    if (day && month && year) {
+        const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        if (!isNaN(d.getTime())) return d;
+    }
+    return null;
 }
 
+// ==================================================================
+// SUMMARY SHEET PARSER
+// ==================================================================
+
 /**
- * Fetch raw CSV data from Google Sheets
+ * Parse the summary CSV into a map of { handle: { name, handle, posts, double } }
  */
-export async function fetchRawData() {
-    let rawData;
+function parseSummaryCSV(csv) {
+    const rows = parseCSV(csv);
+    if (rows.length < 2) return new Map();
 
-    try {
-        const response = await fetch(SHEET_CSV_URL);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const headers = rows[0].map(h => h.trim().toLowerCase());
 
-        const csvText = await response.text();
-        rawData = parseCSV(csvText);
+    const colMap = {
+        name:   headers.findIndex(h => h.includes('nome') || h === 'name'),
+        handle: headers.findIndex(h => h.includes('usuario') || h.includes('user') || h === '@usuario'),
+        posts:  headers.findIndex(h => h.includes('post') || h.includes('reels') || h.includes('tiktok')),
+        // double from summary is the total double content count
+        double: headers.findIndex(h => h.includes('double') || h.includes('duplo')),
+    };
 
-        if (rawData.length === 0) {
-            console.warn('No valid data parsed, using sample data');
-            rawData = SAMPLE_DATA.map(d => ({ ...d, timestamp: new Date(d.date).getTime() }));
-        }
-    } catch (err) {
-        console.warn('Could not fetch Google Sheet:', err.message);
-        rawData = SAMPLE_DATA.map(d => ({ ...d, timestamp: new Date(d.date).getTime() }));
+    const map = new Map();
+
+    for (let i = 1; i < rows.length; i++) {
+        const cols = rows[i];
+        const name = colMap.name >= 0 ? cleanName(cols[colMap.name]) : '';
+        if (!name) continue;
+
+        let handle = colMap.handle >= 0 ? (cols[colMap.handle] || '').trim() : '';
+        if (handle && !handle.startsWith('@')) handle = '@' + handle;
+        const key = handle ? handle.toLowerCase() : name.toLowerCase();
+
+        const posts  = colMap.posts  >= 0 ? parseNum(cols[colMap.posts])  : 0;
+        const double = colMap.double >= 0 ? parseNum(cols[colMap.double]) : 0;
+
+        map.set(key, { name, handle, posts, double });
     }
 
-    return rawData;
+    return map;
+}
+
+// ==================================================================
+// REFERRALS SHEET PARSER
+// ==================================================================
+
+/**
+ * Parse the referrals CSV into an array of { utmSource, date }
+ * Column J (index 9) = UTM_Source (who referred)
+ * Column M (index 12) = Date DD/MM/YYYY
+ */
+function parseReferralsCSV(csv) {
+    const rows = parseCSV(csv);
+    if (rows.length < 2) return [];
+
+    const entries = [];
+
+    for (let i = 1; i < rows.length; i++) {
+        const cols = rows[i];
+        if (cols.length < 13) continue; // skip incomplete rows
+
+        // UTM_Source is column J (index 9)
+        const utmSource = (cols[9] || '').trim().toLowerCase();
+        if (!utmSource) continue;
+
+        // Date is column M (index 12) in DD/MM/YYYY
+        const dateStr = (cols[12] || '').trim();
+        const date = parseDateDDMMYYYY(dateStr);
+        if (!date) continue;
+
+        entries.push({ utmSource, date });
+    }
+
+    return entries;
+}
+
+// ==================================================================
+// DATA FETCHING
+// ==================================================================
+
+/**
+ * Fetch both sheets and return the raw parsed data
+ */
+export async function fetchRawData() {
+    let summaryMap = new Map();
+    let referralEntries = [];
+
+    try {
+        const [summaryRes, referralsRes] = await Promise.all([
+            fetch(SUMMARY_CSV_URL),
+            fetch(REFERRALS_CSV_URL),
+        ]);
+
+        if (summaryRes.ok) {
+            const csvText = await summaryRes.text();
+            summaryMap = parseSummaryCSV(csvText);
+        }
+
+        if (referralsRes.ok) {
+            const csvText = await referralsRes.text();
+            referralEntries = parseReferralsCSV(csvText);
+        }
+    } catch (err) {
+        console.warn('Error fetching sheets:', err.message);
+    }
+
+    return { summaryMap, referralEntries };
+}
+
+// ==================================================================
+// TIME WINDOW HELPERS
+// ==================================================================
+
+/**
+ * Get the start of a given day (00:00:00.000)
+ */
+function startOfDay(d) {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 /**
- * Process raw data: Filter by time window, aggregate by creator, calculate scores, and sort
+ * Determine time window boundaries based on filter value.
+ *
+ * - 'this_month': 1st to last day of current month
+ * - 'last_month': 1st to last day of previous month
+ * - '7': from yesterday going back 7 days (yesterday minus 6 days → yesterday)
+ * - '14': from yesterday going back 14 days
+ * - 'all': no filter
+ *
+ * Returns { start: Date, end: Date } or null for 'all'
+ */
+function getTimeWindow(filter) {
+    const now = new Date();
+    const today = startOfDay(now);
+
+    if (filter === 'all') {
+        return null;
+    }
+
+    if (filter === 'this_month') {
+        const start = new Date(today.getFullYear(), today.getMonth(), 1);
+        const end   = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+        return { start, end };
+    }
+
+    if (filter === 'last_month') {
+        const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const end   = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+        return { start, end };
+    }
+
+    // '7' or '14' — start from yesterday and go back N days
+    const days = parseInt(filter, 10);
+    if (!isNaN(days) && days > 0) {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const start = new Date(yesterday);
+        start.setDate(start.getDate() - (days - 1));
+
+        return { start: startOfDay(start), end: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59) };
+    }
+
+    return null;
+}
+
+/**
+ * Check if a date falls within a time window
+ */
+function isInWindow(date, window) {
+    if (!window) return true; // 'all' filter
+    return date >= window.start && date <= window.end;
+}
+
+// ==================================================================
+// PROCESSING & AGGREGATION
+// ==================================================================
+
+/**
+ * Process raw data: count referrals per creator within the time window,
+ * check for double-point referrals, merge with summary (posts, static double),
+ * calculate scores, and sort.
  */
 export function processAndAggregateData(rawData, timeWindow) {
-    const now = Date.now();
-    const msPerDay = 86400000;
+    const { summaryMap, referralEntries } = rawData;
 
-    // 1. Filter by time window
-    const filtered = rawData.filter(entry => {
-        if (timeWindow === 'all') return true;
+    const window = getTimeWindow(timeWindow);
 
-        const entryTime = entry.timestamp;
+    // 1. Count referrals per UTM source within the time window
+    //    Also count "double" referrals (those within the double-point period)
+    const referralCounts = new Map();
+    const doubleCounts   = new Map();
 
-        if (timeWindow === '7') {
-            return (now - entryTime) <= (7 * msPerDay);
-        }
-        if (timeWindow === '14') {
-            return (now - entryTime) <= (14 * msPerDay);
-        }
-        if (timeWindow === 'this_month') {
-            const entryDate = new Date(entryTime);
-            const today = new Date();
-            return entryDate.getMonth() === today.getMonth() && entryDate.getFullYear() === today.getFullYear();
-        }
+    referralEntries.forEach(entry => {
+        if (!isInWindow(entry.date, window)) return;
 
-        return true;
-    });
+        const key = entry.utmSource;
+        referralCounts.set(key, (referralCounts.get(key) || 0) + 1);
 
-    // 2. Aggregate points per creator (group by handle or name)
-    const aggregatedMap = new Map();
-
-    filtered.forEach(entry => {
-        const key = entry.handle ? entry.handle.toLowerCase() : entry.name.toLowerCase();
-
-        if (aggregatedMap.has(key)) {
-            const existing = aggregatedMap.get(key);
-            existing.posts += entry.posts;
-            existing.referrals += entry.referrals;
-            existing.double += entry.double;
-        } else {
-            aggregatedMap.set(key, {
-                name: entry.name,
-                handle: entry.handle,
-                posts: entry.posts,
-                referrals: entry.referrals,
-                double: entry.double
-            });
+        // Check if this referral falls within the double-point period
+        if (entry.date >= DOUBLE_START && entry.date <= DOUBLE_END) {
+            doubleCounts.set(key, (doubleCounts.get(key) || 0) + 1);
         }
     });
 
-    // 3. Convert to array, calculate scores, and sort
-    const creators = Array.from(aggregatedMap.values()).map(creator => {
-        const scores = calculateScore(creator);
-        return { ...creator, ...scores };
+    // 2. Build the final creators array
+    //    We use all creators from the summary sheet as the master list
+    const creators = [];
+
+    summaryMap.forEach((info, key) => {
+        // Match referrals by UTM source (handle without @)
+        const handleClean = info.handle ? info.handle.replace(/^@/, '').toLowerCase() : '';
+        const nameClean   = info.name.toLowerCase();
+
+        // Try to match by handle first, then by name
+        const referrals = referralCounts.get(handleClean) || referralCounts.get(nameClean) || 0;
+        const doubleReferrals = doubleCounts.get(handleClean) || doubleCounts.get(nameClean) || 0;
+
+        const scores = calculateScore({
+            referrals,
+            posts: info.posts,
+            double: doubleReferrals,
+        });
+
+        creators.push({
+            name: info.name,
+            handle: info.handle,
+            referrals,
+            posts: info.posts,
+            double: doubleReferrals,
+            ...scores,
+        });
     });
 
-    // Sort by total points descending
+    // 3. Sort by total points descending
     creators.sort((a, b) => b.totalPoints - a.totalPoints);
 
     // 4. Assign rank
